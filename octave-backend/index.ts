@@ -77,10 +77,22 @@ const bootstrap = async () => {
     await prisma.$connect();
     console.log("[DB] ✅ Successfully connected to PostgreSQL via Prisma.");
 
-    // Test Redis
-    const pong = await redisClient.ping();
+    // Test Redis (with a small retry loop to allow for async connection setup)
+    let pong = "";
+    for (let i = 0; i < 5; i++) {
+      try {
+        pong = await redisClient.ping();
+        if (pong === "PONG") break;
+      } catch (e) {
+        console.warn(`[Redis] ⏳ Waiting for connection (Attempt ${i + 1})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
     if (pong === "PONG") {
       console.log("[Redis] ✅ Successfully connected to Redis instance.");
+    } else {
+      console.warn("[Redis] ⚠️  Started without immediate Redis connection (will retry in background).");
     }
 
     // Start Express

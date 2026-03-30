@@ -7,7 +7,7 @@ const isSecure = REDIS_URL.startsWith("rediss://");
 
 const redisClient = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
-
+  // For rediss:// URLs, ioredis requires a tls object (even if empty)
   tls: isSecure ? { rejectUnauthorized: false } : undefined,
   retryStrategy(times: number) {
     if (times > MAX_RETRY_ATTEMPTS) {
@@ -21,13 +21,11 @@ const redisClient = new Redis(REDIS_URL, {
     return delay;
   },
 
-  // Prevent commands queuing up indefinitely if Redis is down at startup
-  enableOfflineQueue: false,
+  // Allow commands to queue during the initial connection phase
+  enableOfflineQueue: true,
 
-  // Keep-alive to detect stale connections behind NAT / load balancers
+  // Keep-alive to detect stale connections
   keepAlive: 10_000,
-
-  // Connection name — visible in Redis CLIENT LIST, useful for debugging
   connectionName: "octave-backend",
 });
 
