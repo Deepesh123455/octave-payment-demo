@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 15%;
+
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 8%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 35%;
+    --sidebar-primary: 0 0% 8%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 0 0% 8%;
+
+    --success: 152 55% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 90% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 210 80% 50%;
+    --info-foreground: 0 0% 100%;
+
+    --chart-1: 0 0% 12%;
+    --chart-2: 0 0% 35%;
+    --chart-3: 0 0% 55%;
+    --chart-4: 0 0% 72%;
+    --chart-5: 0 0% 88%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-lg border border-border p-5 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .status-paid {
+    @apply bg-[hsl(var(--success)/.10)] text-[hsl(var(--success))];
+  }
+
+  .status-pending {
+    @apply bg-[hsl(var(--warning)/.10)] text-[hsl(var(--warning))];
+  }
+
+  .status-overdue {
+    @apply bg-[hsl(var(--destructive)/.10)] text-destructive;
+  }
+
+  .page-header {
+    @apply text-2xl font-bold text-foreground tracking-tight;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground;
+  }
+}
