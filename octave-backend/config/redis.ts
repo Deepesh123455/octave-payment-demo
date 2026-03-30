@@ -3,9 +3,12 @@ import { Redis } from "ioredis";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const MAX_RETRY_ATTEMPTS = 10;
 
+const isSecure = REDIS_URL.startsWith("rediss://");
+
 const redisClient = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
 
+  tls: isSecure ? { rejectUnauthorized: false } : undefined,
   retryStrategy(times: number) {
     if (times > MAX_RETRY_ATTEMPTS) {
       console.error(
