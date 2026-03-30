@@ -51,7 +51,7 @@ app.use("/api", apiSpeedLimiter);
 app.use("/api", apiLimiter);
 
 // ── 4. Routes ─────────────────────────────────────────────────────────────
-app.get("/health", (req: Request, res: Response) => {
+app.get("/", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", message: "Octave Secure Portal API is running." });
 });
 
