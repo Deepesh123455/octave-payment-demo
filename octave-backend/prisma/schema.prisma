@@ -1,0 +1,376 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum StoreStatus {
+  Active
+  Inactive
+  Under_Renovation
+}
+
+enum StoreType {
+  Mall
+  High_Street
+}
+
+enum PaymentStatus {
+  Paid
+  Pending
+  Overdue
+  Approved
+  Pending_Approval
+  Cancelled
+  Rejected
+}
+
+enum UtilityType {
+  Electricity
+  Water
+  Internet
+  CAM
+  DG
+}
+
+enum PettyCashStatus {
+  Approved
+  Pending
+  Rejected
+  Escalated
+  Auto_Approved
+  Pending_CFO
+  Paid
+}
+
+enum ApprovalAction {
+  Approved
+  Rejected
+  Pending
+  Escalated
+}
+
+enum TallyImportStatus {
+  Imported
+  Pending
+  Error
+  Skipped
+}
+
+enum PaymentMode {
+  UPI
+  NEFT
+  RTGS
+  Cheque
+  Petty_Cash_Float
+  Bank_Transfer
+}
+
+// Admin 
+
+model Admin {
+  id             String   @id @default(uuid())
+  emailEncrypted String   
+  emailHash      String   @unique 
+  roleEncrypted  String   
+  createdAt      DateTime @default(now())
+}
+
+// ─────────────────────────────────────────
+// LANDLORD
+// ─────────────────────────────────────────
+
+model Landlord {
+  id            String   @id @default(uuid())
+  landlordId    String   @unique // e.g. "LND001"
+  companyName   String
+  contactPerson String
+  email         String
+  phone         String
+  panNumber     String
+  bankName      String
+  bankAccount   String
+  ifscCode      String
+  gstNumber     String
+  address       String
+
+  // Relations
+  stores        Store[]
+  rentPayments  RentPayment[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("landlords")
+}
+
+// ─────────────────────────────────────────
+// STORE
+// ─────────────────────────────────────────
+
+model Store {
+  id                 String      @id @default(uuid())
+  storeId            String      @unique // e.g. "STO001"
+  storeName          String
+  city               String
+  state              String
+  region             String
+  mallOrMarket       String
+  type               StoreType
+  managerName        String
+  managerEmail       String
+  managerPhone       String
+  zoneManager        String
+  landlordId         String
+  monthlyRent        Int
+  rentDueDay         Int         // day of month e.g. 1, 5, 7, 10
+  securityDeposit    Int
+  leaseStartDate     DateTime
+  leaseEndDate       DateTime
+  pettyCashLimit     Int
+  openingDate        DateTime
+  storeStatus        StoreStatus
+  squareFeet         Int
+  bankAccountLast4   String
+  tallyCostCenter    String
+
+  // Relations
+  landlord           Landlord         @relation(fields: [landlordId], references: [landlordId])
+  rentPayments       RentPayment[]
+  utilityBills       UtilityBill[]
+  pettyCashRequests  PettyCashRequest[]
+  approvalLogs       ApprovalLog[]
+  tallyImports       TallyImportRecord[]
+  notifications      Notification[]
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("stores")
+}
+
+// ─────────────────────────────────────────
+// RENT PAYMENT
+// ─────────────────────────────────────────
+
+model RentPayment {
+  id             String        @id @default(uuid())
+  paymentId      String        @unique // e.g. "RP00001"
+  storeId        String
+  landlordId     String
+  paymentMonth   String        // "2024-07"
+  amount         Int
+  latePenalty    Int           @default(0)
+  totalPaid      Int           @default(0)
+  dueDate        DateTime
+  paymentDate    DateTime?
+  paymentMode    PaymentMode
+  utrReference   String?
+  status         PaymentStatus
+  tdsDeducted    Int           @default(0)
+  gst            Int           @default(0)
+  netPayable     Int
+  invoiceNumber  String?
+  remarks        String?
+
+  // Relations
+  store          Store         @relation(fields: [storeId], references: [storeId])
+  landlord       Landlord      @relation(fields: [landlordId], references: [landlordId])
+  approvalLogs   ApprovalLog[]
+  tallyImports   TallyImportRecord[]
+  notifications  Notification[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("rent_payments")
+}
+
+// ─────────────────────────────────────────
+// UTILITY BILL
+// ─────────────────────────────────────────
+
+model UtilityBill {
+  id              String        @id @default(uuid())
+  billId          String        @unique // e.g. "UB00001"
+  storeId         String
+  utilityType     UtilityType
+  providerName    String
+  billMonth       String        // "2024-07"
+  billAmount      Int
+  consumerNumber  String?
+  dueDate         DateTime
+  paymentDate     DateTime?
+  paymentMode     PaymentMode?
+  transactionId   String?
+  status          PaymentStatus
+  meterReading    Int?
+  unitsConsumed   Int?
+  tallyLedger     String
+  tallyCostCenter String
+
+  // Relations
+  store           Store         @relation(fields: [storeId], references: [storeId])
+  approvalLogs    ApprovalLog[]
+  tallyImports    TallyImportRecord[]
+  notifications   Notification[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("utility_bills")
+}
+
+// ─────────────────────────────────────────
+// PETTY CASH REQUEST
+// ─────────────────────────────────────────
+
+model PettyCashRequest {
+  id               String          @id @default(uuid())
+  requestId        String          @unique // e.g. "PC00001"
+  storeId          String
+  requestedBy      String
+  requestDate      DateTime
+  amount           Int
+  category         String          // "Store Supplies", "Repairs", "Marketing" etc.
+  description      String
+  vendorName       String?
+  billNumber       String?
+  status           PettyCashStatus
+  approvedBy       String?
+  approvalDate     DateTime?
+  paymentMode      PaymentMode?
+  tallyVoucherType String?
+  tallyLedger      String?
+  tallyCostCenter  String?
+  remarks          String?
+
+  // Relations
+  store            Store           @relation(fields: [storeId], references: [storeId])
+  approvalLogs     ApprovalLog[]
+  tallyImports     TallyImportRecord[]
+  notifications    Notification[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("petty_cash_requests")
+}
+
+// ─────────────────────────────────────────
+// APPROVAL LOG
+// ─────────────────────────────────────────
+
+model ApprovalLog {
+  id              String         @id @default(uuid())
+  logId           String         @unique // e.g. "AL00001"
+  referenceType   String         // "Rent Payment" | "Utility Bill" | "Petty Cash"
+  referenceId     String         // points to paymentId / billId / requestId
+  storeId         String
+  approverName    String
+  approverRole    String
+  approverEmail   String
+  action          ApprovalAction
+  actionDate      DateTime
+  amount          Int
+  comments        String?
+  level           Int            @default(1)
+  ipAddress       String?
+
+  // Polymorphic FK helpers (optional — keeps joins easy)
+  rentPaymentId   String?
+  utilityBillId   String?
+  pettyCashId     String?
+
+  // Relations
+  store           Store              @relation(fields: [storeId], references: [storeId])
+  rentPayment     RentPayment?       @relation(fields: [rentPaymentId], references: [paymentId])
+  utilityBill     UtilityBill?       @relation(fields: [utilityBillId], references: [billId])
+  pettyCash       PettyCashRequest?  @relation(fields: [pettyCashId], references: [requestId])
+
+  createdAt       DateTime @default(now())
+
+  @@map("approval_logs")
+}
+
+// ─────────────────────────────────────────
+// TALLY IMPORT RECORD
+// ─────────────────────────────────────────
+
+model TallyImportRecord {
+  id              String            @id @default(uuid())
+  importId        String            @unique // e.g. "TI00001"
+  sourceType      String            // "Rent Payment" | "Utility Bill" | "Petty Cash"
+  sourceId        String            // RP/UB/PC id
+  storeId         String
+  voucherDate     DateTime
+  voucherType     String            // "Payment" | "Journal"
+  debitLedger     String
+  creditLedger    String
+  amount          Int
+  tdsAmount       Int               @default(0)
+  netPayable      Int
+  costCenter      String
+  narration       String
+  voucherNumber   String            @unique
+  importStatus    TallyImportStatus
+  importDate      DateTime
+  tallyCompany    String
+  financialYear   String
+
+  // Polymorphic FK helpers
+  rentPaymentId   String?
+  utilityBillId   String?
+  pettyCashId     String?
+
+  // Relations
+  store           Store              @relation(fields: [storeId], references: [storeId])
+  rentPayment     RentPayment?       @relation(fields: [rentPaymentId], references: [paymentId])
+  utilityBill     UtilityBill?       @relation(fields: [utilityBillId], references: [billId])
+  pettyCash       PettyCashRequest?  @relation(fields: [pettyCashId], references: [requestId])
+
+  createdAt       DateTime @default(now())
+
+  @@map("tally_import_records")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATION (for bell icon + email)
+// ─────────────────────────────────────────
+
+model Notification {
+  id              String    @id @default(uuid())
+  storeId         String
+  adminEmail      String
+  title           String
+  message         String
+  type            String    // "RENT_DUE" | "UTILITY_DUE" | "OVERDUE" | "PETTY_CASH"
+  isRead          Boolean   @default(false)
+  sentAt          DateTime  @default(now())
+  emailSent       Boolean   @default(false)
+
+  // Polymorphic source references
+  rentPaymentId   String?
+  utilityBillId   String?
+  pettyCashId     String?
+
+  // Relations
+  store           Store              @relation(fields: [storeId], references: [storeId])
+  rentPayment     RentPayment?       @relation(fields: [rentPaymentId], references: [paymentId])
+  utilityBill     UtilityBill?       @relation(fields: [utilityBillId], references: [billId])
+  pettyCash       PettyCashRequest?  @relation(fields: [pettyCashId], references: [requestId])
+
+  createdAt       DateTime @default(now())
+
+  @@map("notifications")
+}

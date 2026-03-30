@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    // "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["node"] // <-- ADD THIS LINE
+  },
+  "include": [
+    "./**/*.ts" // Tells TS to look at every .ts file in the root
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "prisma",            // Ignores the seed.ts file
+    "prisma.config.ts",  // Ignores the Prisma 7 config
+    "**/*.spec.ts"       // Ignores test files if you add them later
+  ]
+}

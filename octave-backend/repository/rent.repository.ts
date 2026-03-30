@@ -1,0 +1,69 @@
+import { PrismaClient, RentPayment } from "@prisma/client";
+import { IRentRepository } from "../interfaces/rent.interface";
+import { prisma } from "../config/db";
+
+export class RentRepository implements IRentRepository {
+  private prisma: PrismaClient;
+
+  constructor() {
+    this.prisma = prisma;
+  }
+
+  async findAll(): Promise<any[]> {
+    return this.prisma.rentPayment.findMany({
+      include: {
+        store: {
+          select: { storeName: true }
+        },
+        landlord: {
+          select: { companyName: true }
+        }
+      },
+      orderBy: { dueDate: "asc" }
+    });
+  }
+
+  async findByIds(ids: string[]): Promise<RentPayment[]> {
+    return this.prisma.rentPayment.findMany({
+      where: {
+        id: { in: ids }
+      }
+    });
+  }
+
+  async updateStatus(ids: string[], status: string, utrReference?: string): Promise<void> {
+    if (utrReference) {
+      await this.prisma.$executeRaw`
+        UPDATE rent_payments
+        SET status = ${status}::"PaymentStatus",
+            "paymentDate" = NOW(),
+            "utrReference" = ${utrReference}
+        WHERE id::text = ANY(${ids})
+      `;
+    } else {
+      await this.prisma.$executeRaw`
+        UPDATE rent_payments
+        SET status = ${status}::"PaymentStatus"
+        WHERE id::text = ANY(${ids})
+      `;
+    }
+  }
+
+  async bulkApprove(ids: string[]): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE rent_payments
+      SET status = 'Approved'::"PaymentStatus"
+      WHERE id::text = ANY(${ids})
+      AND status IN ('Pending', 'Overdue', 'Pending_Approval', 'Rejected')
+    `;
+  }
+
+  async rejectPayments(ids: string[]): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE rent_payments
+      SET status = 'Rejected'::"PaymentStatus"
+      WHERE id::text = ANY(${ids})
+      AND status IN ('Pending', 'Overdue', 'Pending_Approval')
+    `;
+  }
+}
