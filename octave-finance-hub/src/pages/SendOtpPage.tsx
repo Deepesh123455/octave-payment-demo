@@ -45,11 +45,9 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         {/* Brand Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold tracking-[0.25em] uppercase text-foreground">
-            OCTAVE
-          </h1>
-          <p className="text-[11px] uppercase tracking-[0.4em] text-muted-foreground mt-1">
+        <div className="flex flex-col items-center justify-center mb-10">
+          <img src="/OctaveLogo_510x.jpg" alt="OCTAVE" className="h-10 w-auto object-contain" />
+          <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground mt-3">
             Mettle · Finance Portal
           </p>
         </div>

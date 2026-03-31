@@ -43,16 +43,14 @@ export function AppSidebar() {
         <div className={`px-5 py-6 ${collapsed ? "px-2" : ""}`}>
           {!collapsed ? (
             <div>
-              <h1 className="text-base font-bold text-sidebar-primary tracking-[0.2em] uppercase">
-                OCTAVE
-              </h1>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-sidebar-foreground mt-0.5">
+              <img src="/OctaveLogo_510x.jpg" alt="OCTAVE" className="h-6 w-auto object-contain" />
+              <p className="text-[10px] uppercase tracking-[0.3em] text-sidebar-foreground mt-1">
                 Mettle · Finance
               </p>
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              <span className="text-lg font-bold text-sidebar-primary tracking-wider">O</span>
+              <img src="/OctaveLogo_510x.jpg" alt="O" className="h-4 w-auto object-contain" />
             </div>
           )}
         </div>

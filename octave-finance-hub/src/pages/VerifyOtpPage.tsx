@@ -110,6 +110,12 @@ export default function VerifyOtpPage() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
+        <div className="flex flex-col items-center justify-center mb-8">
+          <img src="/OctaveLogo_510x.jpg" alt="OCTAVE" className="h-8 w-auto object-contain brightness-0 invert shadow-sm" />
+          <p className="text-[9px] uppercase tracking-[0.4em] text-muted-foreground mt-2 opacity-70">
+            Secure Authentication
+          </p>
+        </div>
         <div className="bg-card border border-border rounded-lg p-8 shadow-sm text-center relative overflow-hidden">
           
           {/* Back Button */}
