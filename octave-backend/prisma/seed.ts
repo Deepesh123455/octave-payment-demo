@@ -10,17 +10,7 @@ import path from "node:path";
 import "dotenv/config";
 import { encryptEmail, encryptRole, blindIndex } from "../utils/crypto";
 
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// 2. Wrap the pool in the Prisma Adapter
-const adapter = new PrismaPg(pool);
-
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 // ─── Load raw JSON ───────────────────────────────────────────────────────────
 const raw = JSON.parse(
@@ -85,6 +75,7 @@ function mapPettyCashStatus(s: string) {
     Escalated: "Escalated",
     "Auto Approved": "Auto_Approved",
     "Pending CFO": "Pending_CFO",
+    Paid: "Paid",
   };
   return (map[s] ?? "Pending") as any;
 }
@@ -306,6 +297,8 @@ async function seedPettyCash() {
     tallyLedger: p.tally_ledger ?? null,
     tallyCostCenter: p.tally_cost_center ?? null,
     remarks: p.remarks ?? null,
+    paymentDate: toDate(p.payment_date),
+    transactionId: p.transaction_id ?? null,
   }));
 
   for (let i = 0; i < rows.length; i += 100) {

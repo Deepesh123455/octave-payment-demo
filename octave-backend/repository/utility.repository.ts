@@ -31,7 +31,7 @@ export class UtilityRepository implements IUtilityRepository {
       UPDATE utility_bills
       SET status = 'Approved'::"PaymentStatus"
       WHERE id::text = ANY(${ids})
-      AND status IN ('Pending', 'Overdue', 'Pending_Approval')
+      AND status IN ('Pending', 'Overdue', 'Pending_Approval', 'Rejected')
     `;
   }
 

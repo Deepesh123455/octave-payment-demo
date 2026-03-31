@@ -14,6 +14,7 @@ export const useApproveUtilities = () => {
     mutationFn: approveUtilities,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["utilityBills"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
       // Also invalidate store details if needed
       queryClient.invalidateQueries({ queryKey: ["store"] });
     },

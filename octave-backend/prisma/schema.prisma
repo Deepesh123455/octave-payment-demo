@@ -254,6 +254,8 @@ model PettyCashRequest {
   tallyLedger      String?
   tallyCostCenter  String?
   remarks          String?
+  paymentDate      DateTime?
+  transactionId    String?
 
   // Relations
   store            Store           @relation(fields: [storeId], references: [storeId])

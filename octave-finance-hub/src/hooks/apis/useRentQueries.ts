@@ -30,6 +30,7 @@ export const useApprovePayments = () => {
     mutationFn: (paymentIds: string[]) => approvePayments(paymentIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rent-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
     },
   });
 };
