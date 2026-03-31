@@ -2,9 +2,11 @@ import { Router } from "express";
 import { ApprovalRepository } from "../repository/approval.repository";
 import { ApprovalService } from "../service/approval.service";
 import { ApprovalController } from "../controller/approval.controller";
+import { NotificationRepository } from "../repository/notification.repository";
 
+const notificationRepo = new NotificationRepository();
 const approvalRepo = new ApprovalRepository();
-const approvalService = new ApprovalService(approvalRepo);
+const approvalService = new ApprovalService(approvalRepo, notificationRepo);
 const approvalController = new ApprovalController(approvalService);
 
 const router = Router();

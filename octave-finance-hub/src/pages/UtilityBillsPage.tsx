@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Zap, Wifi, Droplets, Building, Cog, Loader2, AlertCircle, CheckCircle, 
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
 import { useUtilityBills, useApproveUtilities, useRejectUtilities } from "@/hooks/apis/useUtilityQueries";
+import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { toast } from "sonner";
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -30,10 +31,17 @@ const typeLabels: Record<string, string> = {
 export default function UtilityBills() {
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("Pending");
+  const { mutate: markRead } = useMarkRead();
+
+  useEffect(() => {
+    markRead({ type: "UTILITY_DUE" });
+  }, []);
   
   const { data: utilityResponse, isLoading, isError, error } = useUtilityBills();
   const { mutateAsync: approve } = useApproveUtilities();
   const { mutateAsync: reject } = useRejectUtilities();
+
+
 
   const rawBills = utilityResponse?.data || [];
 

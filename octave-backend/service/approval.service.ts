@@ -8,11 +8,15 @@ import {
   VerifyApprovalPaymentPayload,
 } from "../interfaces/approval.interface";
 import { ApiError } from "../utils/AppError";
+import { NotificationRepository } from "../repository/notification.repository";
 
 export class ApprovalService implements IApprovalService {
   private razorpay: Razorpay;
 
-  constructor(private approvalRepo: IApprovalRepository) {
+  constructor(
+    private approvalRepo: IApprovalRepository,
+    private notificationRepo: NotificationRepository
+  ) {
     this.razorpay = new Razorpay({
       key_id: process.env.Test_Key_ID!,
       key_secret: process.env.Test_Key_Secret!,
@@ -63,7 +67,7 @@ export class ApprovalService implements IApprovalService {
     }));
 
     return [...rentItems, ...utilityItems, ...pettyCashItems].sort(
-      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      (a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()
     );
   }
 
@@ -132,6 +136,42 @@ export class ApprovalService implements IApprovalService {
         ? this.approvalRepo.markPettyCashAsPaid(pettyCashIds, razorpay_payment_id)
         : Promise.resolve(),
     ]);
+
+    // Fetch item details to get storeIds
+    const [rents, utilities, pettyCashItems] = await Promise.all([
+      rentIds.length > 0 ? this.approvalRepo.getRentPaymentsByIds(rentIds) : Promise.resolve([]),
+      utilityIds.length > 0 ? this.approvalRepo.getUtilityBillsByIds(utilityIds) : Promise.resolve([]),
+      pettyCashIds.length > 0 ? this.approvalRepo.getPettyCashByIds(pettyCashIds) : Promise.resolve([]),
+    ]);
+
+    // Create notifications for transactions
+    for (const rent of rents) {
+      await this.notificationRepo.createNotification({
+        storeId: rent.storeId,
+        adminEmail: "all",
+        title: "Payment Successful",
+        message: `Rent payment (ID: ${rent.paymentId}) processed (UTR: ${razorpay_payment_id}).`,
+        type: "TRANSACTION",
+      });
+    }
+    for (const util of utilities) {
+      await this.notificationRepo.createNotification({
+        storeId: util.storeId,
+        adminEmail: "all",
+        title: "Payment Successful",
+        message: `Utility payment (ID: ${util.billId}) processed (UTR: ${razorpay_payment_id}).`,
+        type: "TRANSACTION",
+      });
+    }
+    for (const pc of pettyCashItems) {
+      await this.notificationRepo.createNotification({
+        storeId: pc.storeId,
+        adminEmail: "all",
+        title: "Payment Successful",
+        message: `Petty Cash payment (ID: ${pc.requestId}) processed (UTR: ${razorpay_payment_id}).`,
+        type: "TRANSACTION",
+      });
+    }
   }
 
   async rejectItems(
@@ -152,6 +192,45 @@ export class ApprovalService implements IApprovalService {
         ? this.approvalRepo.rejectPettyCash(pettyCashIds)
         : Promise.resolve(),
     ]);
+
+    // Fetch item details to get storeIds
+    const [rents, utilities, pettyCashItems] = await Promise.all([
+      rentIds.length > 0 ? this.approvalRepo.getRentPaymentsByIds(rentIds) : Promise.resolve([]),
+      utilityIds.length > 0 ? this.approvalRepo.getUtilityBillsByIds(utilityIds) : Promise.resolve([]),
+      pettyCashIds.length > 0 ? this.approvalRepo.getPettyCashByIds(pettyCashIds) : Promise.resolve([]),
+    ]);
+
+    // Create notifications for rejected items
+    for (const rent of rents) {
+      await this.notificationRepo.createNotification({
+        storeId: rent.storeId,
+        adminEmail: "all",
+        title: "Item Rejected",
+        message: `Rent item (${rent.paymentId}) has been rejected and returned to the pending queue.`,
+        type: "RENT_DUE",
+        rentPaymentId: rent.paymentId
+      });
+    }
+    for (const util of utilities) {
+      await this.notificationRepo.createNotification({
+        storeId: util.storeId,
+        adminEmail: "all",
+        title: "Item Rejected",
+        message: `Utility item (${util.billId}) has been rejected and returned to the pending queue.`,
+        type: "UTILITY_DUE",
+        utilityBillId: util.billId
+      });
+    }
+    for (const pc of pettyCashItems) {
+      await this.notificationRepo.createNotification({
+        storeId: pc.storeId,
+        adminEmail: "all",
+        title: "Item Rejected",
+        message: `Petty Cash item (ID: ${pc.requestId}) has been rejected and returned to the pending queue.`,
+        type: "PETTY_CASH",
+        pettyCashId: pc.requestId
+      });
+    }
   }
 
   private formatUtilityType(type: string): string {

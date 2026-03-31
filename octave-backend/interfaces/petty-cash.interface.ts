@@ -22,6 +22,7 @@ export interface IPettyCashRepository {
   findAll(filters?: { storeId?: string; status?: string }): Promise<any[]>;
   create(data: any): Promise<any>;
   bulkApprove(ids: string[], approvedBy: string): Promise<void>;
+  findByIds(ids: string[]): Promise<any[]>;
   updateStatus(ids: string[], status: string): Promise<void>;
 }
 

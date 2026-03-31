@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,17 +10,25 @@ import { CheckCircle, Loader2, AlertCircle, Filter, FileCheck, XCircle } from "l
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
 import { useRentPayments, useApprovePayments, useRejectRentPayments } from "@/hooks/apis/useRentQueries";
+import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function RentPayments() {
   const [selected, setSelected] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("Pending");
+  const [activeTab, setActiveTab] = useState("All");
   const { user } = useAuth();
+  const { mutate: markRead } = useMarkRead();
+
+  useEffect(() => {
+    markRead({ type: "RENT_DUE" });
+  }, []);
   
   const { data: rentResponse, isLoading, isError, error } = useRentPayments();
   const { mutateAsync: approve } = useApprovePayments();
   const { mutateAsync: reject } = useRejectRentPayments();
+
+
 
   const rentRecords = rentResponse?.data || [];
 

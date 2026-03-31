@@ -18,6 +18,8 @@ import rentRoutes from "./routes/rent.routes";
 import utilityRoutes from "./routes/utility.routes";
 import approvalRoutes from "./routes/approval.routes";
 import pettyCashRoutes from "./routes/petty-cash.routes";
+import transactionRoutes from "./routes/transaction.routes";
+import notificationRoutes from "./routes/notification.routes";
 import { ApiError } from "./utils/AppError";
 import { globalErrorHandler } from "./middleware/errormiddleware";
 
@@ -47,8 +49,8 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // ── 3. Global API Protection ──────────────────────────────────────────────
-app.use("/api", apiSpeedLimiter);
-app.use("/api", apiLimiter);
+// app.use("/api", apiSpeedLimiter);
+// app.use("/api", apiLimiter);
 
 // ── 4. Routes ─────────────────────────────────────────────────────────────
 app.get("/", (req: Request, res: Response) => {
@@ -61,6 +63,8 @@ app.use("/api/v1/rent", rentRoutes);
 app.use("/api/v1/utility", utilityRoutes);
 app.use("/api/v1/approval", approvalRoutes);
 app.use("/api/v1/petty-cash", pettyCashRoutes);
+app.use("/api/v1/transactions", transactionRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // ── 5. 404 Handler ────────────────────────────────────────────────────────
 app.use("*", (req: Request, res: Response, next: NextFunction) => {

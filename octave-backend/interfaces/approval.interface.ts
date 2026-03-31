@@ -29,6 +29,9 @@ export interface IApprovalRepository {
   markRentAsPaid(ids: string[], utr: string): Promise<void>;
   markUtilityAsPaid(ids: string[], utr: string): Promise<void>;
   markPettyCashAsPaid(ids: string[], utr: string): Promise<void>;
+  getRentPaymentsByIds(ids: string[]): Promise<any[]>;
+  getUtilityBillsByIds(ids: string[]): Promise<any[]>;
+  getPettyCashByIds(ids: string[]): Promise<any[]>;
 }
 
 export interface IApprovalService {

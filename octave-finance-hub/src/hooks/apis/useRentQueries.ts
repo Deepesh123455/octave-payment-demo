@@ -20,6 +20,8 @@ export const useConfirmPayment = () => {
     mutationFn: (payload: any) => confirmPayment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rent-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
@@ -31,6 +33,8 @@ export const useApprovePayments = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rent-payments"] });
       queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
@@ -41,6 +45,8 @@ export const useRejectRentPayments = () => {
     mutationFn: (paymentIds: string[]) => rejectPayments(paymentIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rent-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };

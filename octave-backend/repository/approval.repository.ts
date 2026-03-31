@@ -18,7 +18,7 @@ export class ApprovalRepository implements IApprovalRepository {
       LEFT JOIN stores s ON rp."storeId" = s."storeId"
       LEFT JOIN landlords l ON rp."landlordId" = l.id
       WHERE rp.status = 'Approved'
-      ORDER BY rp."dueDate" ASC
+      ORDER BY rp."dueDate" DESC
     `;
   }
 
@@ -29,7 +29,7 @@ export class ApprovalRepository implements IApprovalRepository {
       FROM utility_bills ub
       LEFT JOIN stores s ON ub."storeId" = s."storeId"
       WHERE ub.status = 'Approved'
-      ORDER BY ub."dueDate" ASC
+      ORDER BY ub."dueDate" DESC
     `;
   }
 
@@ -40,14 +40,14 @@ export class ApprovalRepository implements IApprovalRepository {
       FROM petty_cash_requests pcr
       LEFT JOIN stores s ON pcr."storeId" = s."storeId"
       WHERE pcr.status = 'Approved' OR pcr.status = 'Auto_Approved'
-      ORDER BY pcr."requestDate" ASC
+      ORDER BY pcr."requestDate" DESC
     `;
   }
 
   async rejectRentPayments(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE rent_payments
-      SET status = 'Pending'
+      SET status = 'Rejected'
       WHERE id::text = ANY(${ids})
       AND status = 'Approved'
     `;
@@ -56,7 +56,7 @@ export class ApprovalRepository implements IApprovalRepository {
   async rejectUtilityBills(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE utility_bills
-      SET status = 'Pending'
+      SET status = 'Rejected'
       WHERE id::text = ANY(${ids})
       AND status = 'Approved'
     `;
@@ -65,7 +65,7 @@ export class ApprovalRepository implements IApprovalRepository {
   async rejectPettyCash(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE petty_cash_requests
-      SET status = 'Pending'
+      SET status = 'Rejected'
       WHERE id::text = ANY(${ids})
       AND (status = 'Approved' OR status = 'Auto_Approved')
     `;
@@ -103,5 +103,23 @@ export class ApprovalRepository implements IApprovalRepository {
           "paymentMode" = 'Bank_Transfer'::"PaymentMode"
       WHERE id::text = ANY(${ids})
     `;
+  }
+
+  async getRentPaymentsByIds(ids: string[]): Promise<any[]> {
+    return this.prisma.rentPayment.findMany({
+      where: { id: { in: ids } }
+    });
+  }
+
+  async getUtilityBillsByIds(ids: string[]): Promise<any[]> {
+    return this.prisma.utilityBill.findMany({
+      where: { id: { in: ids } }
+    });
+  }
+
+  async getPettyCashByIds(ids: string[]): Promise<any[]> {
+    return this.prisma.pettyCashRequest.findMany({
+      where: { id: { in: ids } }
+    });
   }
 }

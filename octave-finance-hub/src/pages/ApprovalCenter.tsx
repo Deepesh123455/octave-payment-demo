@@ -39,6 +39,7 @@ import {
   useConfirmApprovalPayment,
   useRejectApprovalItems,
 } from "@/hooks/apis/useApprovalQueries";
+import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -53,6 +54,11 @@ type SourceType = "RENT" | "UTILITY" | "PETTY_CASH";
 
 export default function ApprovalCenter() {
   const { user } = useAuth();
+  const { mutate: markRead } = useMarkRead();
+
+  useEffect(() => {
+    markRead({ type: "APPROVAL" });
+  }, []);
   const navigate = useNavigate();
   const [storeFilter, setStoreFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -67,6 +73,8 @@ export default function ApprovalCenter() {
   const { mutateAsync: initiate } = useInitiateApprovalPayment();
   const { mutateAsync: confirm } = useConfirmApprovalPayment();
   const { mutateAsync: reject } = useRejectApprovalItems();
+
+
 
   const items = response?.data || [];
 

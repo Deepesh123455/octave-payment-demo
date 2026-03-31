@@ -20,9 +20,9 @@ const authController = new AuthController(authService);
 // 2. Define the route
 router.post(
   "/login/otp/send",
-  otpSpeedLimiter,
+  // otpSpeedLimiter,
   validate(sendOtpValidation),
-  otpSendLimiter,
+  // otpSendLimiter,
  
   authController.sendOtp,
 );

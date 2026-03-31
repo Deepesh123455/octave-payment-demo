@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { Receipt, CheckCircle, Clock, AlertTriangle, Plus, Loader2, Filter, File
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency, getStatusLabel } from "@/data/sampleData";
 import { usePettyCashRequests, useCreatePettyCash, useApprovePettyCash, useRejectPettyCash } from "@/hooks/apis/usePettyCashQueries";
+import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { useStores } from "@/hooks/apis/useStoreQueries";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -25,6 +26,11 @@ export default function PettyCash() {
   const { user, isAdmin } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("Pending_CFO");
+  const { mutate: markRead } = useMarkRead();
+
+  useEffect(() => {
+    markRead({ type: "PETTY_CASH" });
+  }, []);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newRequest, setNewRequest] = useState({
     storeId: "",
@@ -38,6 +44,8 @@ export default function PettyCash() {
   const { mutateAsync: createRequest, isPending: isCreating } = useCreatePettyCash();
   const { mutateAsync: approveRequests } = useApprovePettyCash();
   const { mutateAsync: rejectRequests } = useRejectPettyCash();
+
+
 
   const requests = pettyResponse?.data || [];
   const stores = storesResponse?.data || [];

@@ -1,8 +1,12 @@
 import { IPettyCashRepository, IPettyCashService } from "../interfaces/petty-cash.interface";
 import { ApiError } from "../utils/AppError";
+import { NotificationRepository } from "../repository/notification.repository";
 
 export class PettyCashService implements IPettyCashService {
-  constructor(private pettyCashRepo: IPettyCashRepository) {}
+  constructor(
+    private pettyCashRepo: IPettyCashRepository,
+    private notificationRepo: NotificationRepository
+  ) {}
 
   async getAllRequests(filters?: { storeId?: string; status?: string }): Promise<any[]> {
     return this.pettyCashRepo.findAll(filters);
@@ -29,7 +33,7 @@ export class PettyCashService implements IPettyCashService {
     // Generate Request ID: PC-TIMESTAMP
     const requestId = `PC-${Date.now()}`;
 
-    return this.pettyCashRepo.create({
+    const result = await this.pettyCashRepo.create({
       requestId,
       storeId,
       requestedBy,
@@ -38,13 +42,38 @@ export class PettyCashService implements IPettyCashService {
       description,
       status
     });
+
+    // Create notification
+    await this.notificationRepo.createNotification({
+      storeId: storeId,
+      adminEmail: "all",
+      title: "New Petty Cash Request",
+      message: `A new request for ${category} (₹${amount}) was created by ${requestedBy}. Status: ${status}`,
+      type: status === "Auto_Approved" ? "APPROVAL" : "PETTY_CASH",
+      pettyCashId: requestId
+    });
+
+    return result;
   }
 
   async approveRequests(ids: string[], approvedBy: string): Promise<void> {
     if (!ids || ids.length === 0) {
       throw new ApiError("No request IDs provided", 400);
     }
+    const items = await this.pettyCashRepo.findByIds(ids);
     await this.pettyCashRepo.bulkApprove(ids, approvedBy);
+
+    // Create notification for Approval Center
+    for (const item of items) {
+      await this.notificationRepo.createNotification({
+        storeId: item.storeId,
+        adminEmail: "all",
+        title: "Petty Cash Approved",
+        message: `Petty Cash request (ID: ${item.requestId}) has been approved and moved to Approval Center.`,
+        type: "APPROVAL",
+        pettyCashId: item.requestId
+      });
+    }
   }
 
   async rejectRequests(ids: string[], rejectedBy: string): Promise<void> {

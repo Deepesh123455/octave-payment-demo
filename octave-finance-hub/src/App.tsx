@@ -12,6 +12,7 @@ import UtilityBillsPage from "./pages/UtilityBillsPage";
 import PettyCash from "./pages/PettyCash";
 import ApprovalCenter from "./pages/ApprovalCenter";
 import Reports from "./pages/Reports";
+import TransactionsPage from "./pages/Transactions";
 import LoginPage from "./pages/SendOtpPage";
 import AIInsights from "./pages/AIInsights";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,7 @@ function AppRoutes() {
         <Route path="/utilities" element={<UtilityBillsPage />} />
         <Route path="/petty-cash" element={<PettyCash />} />
         <Route path="/approvals" element={<ApprovalCenter />} />
+        <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/ai-insights" element={<AIInsights />} />
       </Route>

@@ -51,6 +51,14 @@ export class PettyCashRepository implements IPettyCashRepository {
     `;
   }
 
+  async findByIds(ids: string[]): Promise<any[]> {
+    return this.prisma.pettyCashRequest.findMany({
+      where: {
+        id: { in: ids }
+      }
+    });
+  }
+
   async updateStatus(ids: string[], status: string): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE petty_cash_requests

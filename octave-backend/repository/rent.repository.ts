@@ -19,7 +19,7 @@ export class RentRepository implements IRentRepository {
           select: { companyName: true }
         }
       },
-      orderBy: { dueDate: "asc" }
+      orderBy: { dueDate: "desc" }
     });
   }
 

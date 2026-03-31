@@ -147,7 +147,7 @@ export const otpSpeedLimiter = createSpeedLimiter({
  */
 export const apiSpeedLimiter = createSpeedLimiter({
   windowMs: 15 * 60 * 1000,
-  delayAfter: 50,
+  delayAfter: 200, // Increased to accommodate real-time polling (12 req/min * 15m = 180 req)
   baseDelayMs: 500,
   maxDelayMs: 3000,
   routeName: "api",

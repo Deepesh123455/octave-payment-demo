@@ -2,11 +2,15 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import { IRentRepository, IRentService, VerifyPaymentPayload } from "../interfaces/rent.interface";
 import { ApiError } from "../utils/AppError";
+import { NotificationRepository } from "../repository/notification.repository";
 
 export class RentService implements IRentService {
   private razorpay: Razorpay;
 
-  constructor(private rentRepo: IRentRepository) {
+  constructor(
+    private rentRepo: IRentRepository,
+    private notificationRepo: NotificationRepository
+  ) {
     this.razorpay = new Razorpay({
       key_id: process.env.Test_Key_ID!,
       key_secret: process.env.Test_Key_Secret!,
@@ -66,10 +70,24 @@ export class RentService implements IRentService {
   }
 
   async approvePayments(ids: string[]): Promise<void> {
+    const items = await this.rentRepo.findByIds(ids);
     await this.rentRepo.bulkApprove(ids);
+    
+    // Create notifications for Approval Center
+    for (const item of items) {
+      await this.notificationRepo.createNotification({
+        storeId: item.storeId,
+        adminEmail: "all",
+        title: "Rent Approved",
+        message: `Rent payment (ID: ${item.paymentId}) has been approved and is waiting for payment in the Approval Center.`,
+        type: "APPROVAL",
+        rentPaymentId: item.paymentId
+      });
+    }
   }
 
   async rejectPayments(ids: string[]): Promise<void> {
     await this.rentRepo.rejectPayments(ids);
+    // Optionally create a notification for rejection, but usually items just stay in the same list or move to a 'Rejected' status.
   }
 }

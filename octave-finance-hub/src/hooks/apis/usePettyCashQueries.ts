@@ -19,6 +19,8 @@ export const useCreatePettyCash = () => {
     mutationFn: createPettyCashRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
@@ -31,6 +33,8 @@ export const useApprovePettyCash = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
       queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
@@ -42,6 +46,8 @@ export const useRejectPettyCash = () => {
       rejectPettyCashRequests(ids, rejectedBy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };

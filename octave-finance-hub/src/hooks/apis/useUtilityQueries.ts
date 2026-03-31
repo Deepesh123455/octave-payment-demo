@@ -15,8 +15,9 @@ export const useApproveUtilities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["utilityBills"] });
       queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
-      // Also invalidate store details if needed
       queryClient.invalidateQueries({ queryKey: ["store"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
@@ -28,6 +29,8 @@ export const useRejectUtilities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["utilityBills"] });
       queryClient.invalidateQueries({ queryKey: ["store"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 };
