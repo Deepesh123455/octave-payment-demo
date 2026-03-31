@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, ArrowRight } from "lucide-react";
-import { useSendOtp } from "@/hooks/apis/SendOtp"; // Import our new hook
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSendOtp } from "@/hooks/apis/SendOtp"; 
 import { AppRole } from "@/api/api.auth";
 
 const ROLES: { value: AppRole; label: string; description: string }[] = [
@@ -14,6 +16,8 @@ const ROLES: { value: AppRole; label: string; description: string }[] = [
 ];
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole | null>(null);
   const [localError, setLocalError] = useState("");
@@ -28,6 +32,18 @@ export default function LoginPage() {
     // 1. Frontend Validation
     if (!email) return setLocalError("Email is required");
     if (!role) return setLocalError("Please select a role");
+
+    // ─── DEMO BYPASS ───
+    if (email.toLowerCase() === "democfo@gmail.com") {
+      console.log("[Demo] Bypassing OTP for demo user");
+      login("demo-token", { 
+        id: "demo-id-cfo", 
+        email: "democfo@gmail.com", 
+        role: role 
+      });
+      navigate("/");
+      return;
+    }
 
     // 2. Trigger the API Call
     sendOtp({ email, role });
