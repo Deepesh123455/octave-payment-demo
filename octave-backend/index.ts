@@ -29,10 +29,11 @@ const PORT = process.env.PORT || 5000;
 
 // ── 1. Global Security & Utility Middlewares ──────────────────────────────
 app.use(helmet());
+const rawFrontendUrls = process.env.FRONTEND_URL || "";
 const allowedOrigins = [
   "http://localhost:8080",
   "http://localhost:5173",
-  process.env.FRONTEND_URL,
+  ...rawFrontendUrls.split(",").map(url => url.trim().replace(/\/$/, "")),
 ].filter(Boolean) as string[];
 
 app.use(
@@ -40,9 +41,13 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === "development") {
+      
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      
+      if (allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV === "development") {
         callback(null, true);
       } else {
+        console.error(`[CORS] ❌ Origin ${origin} not allowed. Allowed:`, allowedOrigins);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -67,8 +72,12 @@ if (process.env.NODE_ENV === "development") {
 // app.use("/api", apiLimiter);
 
 // ── 4. Routes ─────────────────────────────────────────────────────────────
-app.get("/", (req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", message: "Octave Secure Portal API is running." });
+// app.get("/", (req: Request, res: Response) => {
+//   res.status(200).json({ status: "ok", message: "Octave Secure Portal API is running." });
+// });
+
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "healthy" });
 });
 
 app.use("/api/v1/auth", authRoutes);
