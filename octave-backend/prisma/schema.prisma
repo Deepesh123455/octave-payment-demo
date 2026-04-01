@@ -193,6 +193,10 @@ model RentPayment {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([storeId])
+  @@index([landlordId])
+  @@index([status])
+  @@index([dueDate])
   @@map("rent_payments")
 }
 
@@ -228,6 +232,9 @@ model UtilityBill {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([storeId])
+  @@index([status])
+  @@index([dueDate])
   @@map("utility_bills")
 }
 
@@ -266,6 +273,9 @@ model PettyCashRequest {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  @@index([storeId])
+  @@index([status])
+  @@index([requestDate])
   @@map("petty_cash_requests")
 }
 
@@ -302,6 +312,8 @@ model ApprovalLog {
 
   createdAt       DateTime @default(now())
 
+  @@index([referenceId])
+  @@index([storeId])
   @@map("approval_logs")
 }
 
@@ -374,5 +386,9 @@ model Notification {
 
   createdAt       DateTime @default(now())
 
+  @@index([storeId])
+  @@index([type])
+  @@index([isRead])
+  @@index([sentAt])
   @@map("notifications")
 }

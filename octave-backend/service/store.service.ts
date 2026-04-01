@@ -4,7 +4,7 @@ import { IStoreRepository, IStoreService } from "../interfaces/store.interface";
 export class StoreService implements IStoreService {
   constructor(private storeRepo: IStoreRepository) {}
 
-  async getAllStores(): Promise<Store[]> {
+  async getAllStores(): Promise<any[]> {
     return this.storeRepo.findAll();
   }
 

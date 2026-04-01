@@ -10,7 +10,13 @@ import path from "node:path";
 import "dotenv/config";
 import { encryptEmail, encryptRole, blindIndex } from "../utils/crypto";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DIRECT_URL || process.env.DATABASE_URL,
+    },
+  },
+});
 
 // ─── Load raw JSON ───────────────────────────────────────────────────────────
 const raw = JSON.parse(

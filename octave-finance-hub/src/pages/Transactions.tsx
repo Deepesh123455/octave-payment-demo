@@ -13,6 +13,7 @@ import { useTransactions } from "@/hooks/apis/useTransactionQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function TransactionsPage() {
   const { data: response, isLoading, isError, error } = useTransactions();
@@ -37,6 +38,43 @@ export default function TransactionsPage() {
     );
   }, [transactions, search]);
 
+  const handleExportCSV = () => {
+    if (filtered.length === 0) {
+      toast.error("No transactions to export");
+      return;
+    }
+
+    const headers = ["Date", "Store ID", "Owner / Vendor", "Type", "Description", "Transaction ID", "Amount"];
+    const csvRows = filtered.map((t) => {
+      const date = new Date(t.date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+      return [
+        date,
+        t.storeId,
+        `"${t.ownerName.replace(/"/g, '""')}"`,
+        t.sourceType,
+        `"${t.description.replace(/"/g, '""')}"`,
+        t.transactionId,
+        t.amount
+      ].join(",");
+    });
+
+    const csvString = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `octave_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Transactions exported successfully");
+  };
+
   return (
     <AppLayout>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -45,7 +83,7 @@ export default function TransactionsPage() {
             <h1 className="page-header">Transaction History</h1>
             <p className="text-muted-foreground text-sm mt-1">Audit trail of all processed payments</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportCSV}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
         </div>

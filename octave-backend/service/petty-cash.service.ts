@@ -63,17 +63,17 @@ export class PettyCashService implements IPettyCashService {
     const items = await this.pettyCashRepo.findByIds(ids);
     await this.pettyCashRepo.bulkApprove(ids, approvedBy);
 
-    // Create notification for Approval Center
-    for (const item of items) {
-      await this.notificationRepo.createNotification({
-        storeId: item.storeId,
-        adminEmail: "all",
-        title: "Petty Cash Approved",
-        message: `Petty Cash request (ID: ${item.requestId}) has been approved and moved to Approval Center.`,
-        type: "APPROVAL",
-        pettyCashId: item.requestId
-      });
-    }
+    // Create notifications for Approval Center in batch
+    const notifications = items.map(item => ({
+      storeId: item.storeId,
+      adminEmail: "all",
+      title: "Petty Cash Approved",
+      message: `Petty Cash request (ID: ${item.requestId}) has been approved and moved to Approval Center.`,
+      type: "APPROVAL",
+      pettyCashId: item.requestId
+    }));
+
+    await this.notificationRepo.createManyNotifications(notifications);
   }
 
   async rejectRequests(ids: string[], rejectedBy: string): Promise<void> {

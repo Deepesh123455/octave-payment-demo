@@ -68,4 +68,24 @@ export class NotificationRepository {
       }
     });
   }
+
+  async createManyNotifications(data: Array<{
+    storeId: string;
+    adminEmail: string;
+    title: string;
+    message: string;
+    type: string;
+    rentPaymentId?: string;
+    utilityBillId?: string;
+    pettyCashId?: string;
+  }>): Promise<void> {
+    if (data.length === 0) return;
+    await this.prisma.notification.createMany({
+      data: data.map(d => ({
+        ...d,
+        isRead: false,
+        sentAt: new Date()
+      }))
+    });
+  }
 }

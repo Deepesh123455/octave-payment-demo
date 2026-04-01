@@ -11,12 +11,13 @@ export class ApprovalRepository implements IApprovalRepository {
 
   async getApprovedRentPayments(): Promise<any[]> {
     return this.prisma.$queryRaw`
-      SELECT rp.*, 
+      SELECT rp.id, rp."paymentId", rp."storeId", rp."landlordId", 
+             rp."paymentMonth", rp.amount, rp."netPayable", rp."dueDate", rp.status,
              s."storeName",
              l."companyName"
       FROM rent_payments rp
       LEFT JOIN stores s ON rp."storeId" = s."storeId"
-      LEFT JOIN landlords l ON rp."landlordId" = l.id
+      LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"
       WHERE rp.status = 'Approved'
       ORDER BY rp."dueDate" DESC
     `;
@@ -24,7 +25,9 @@ export class ApprovalRepository implements IApprovalRepository {
 
   async getApprovedUtilityBills(): Promise<any[]> {
     return this.prisma.$queryRaw`
-      SELECT ub.*,
+      SELECT ub.id, ub."billId", ub."storeId", ub."utilityType", 
+             ub."providerName", ub."billMonth", ub."billAmount", 
+             ub."dueDate", ub.status,
              s."storeName"
       FROM utility_bills ub
       LEFT JOIN stores s ON ub."storeId" = s."storeId"
@@ -35,7 +38,9 @@ export class ApprovalRepository implements IApprovalRepository {
 
   async getApprovedPettyCash(): Promise<any[]> {
     return this.prisma.$queryRaw`
-      SELECT pcr.*,
+      SELECT pcr.id, pcr."requestId", pcr."storeId", pcr."requestedBy", 
+             pcr."requestDate", pcr.amount, pcr.category, pcr.description, 
+             pcr.status,
              s."storeName"
       FROM petty_cash_requests pcr
       LEFT JOIN stores s ON pcr."storeId" = s."storeId"
@@ -47,27 +52,27 @@ export class ApprovalRepository implements IApprovalRepository {
   async rejectRentPayments(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE rent_payments
-      SET status = 'Rejected'
-      WHERE id::text = ANY(${ids})
-      AND status = 'Approved'
+      SET status = 'Rejected'::"PaymentStatus"
+      WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
+      AND status = 'Approved'::"PaymentStatus"
     `;
   }
 
   async rejectUtilityBills(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE utility_bills
-      SET status = 'Rejected'
-      WHERE id::text = ANY(${ids})
-      AND status = 'Approved'
+      SET status = 'Rejected'::"PaymentStatus"
+      WHERE (id::text = ANY(${ids}) OR "billId" = ANY(${ids}))
+      AND status = 'Approved'::"PaymentStatus"
     `;
   }
 
   async rejectPettyCash(ids: string[]): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE petty_cash_requests
-      SET status = 'Rejected'
-      WHERE id::text = ANY(${ids})
-      AND (status = 'Approved' OR status = 'Auto_Approved')
+      SET status = 'Rejected'::"PettyCashStatus"
+      WHERE (id::text = ANY(${ids}) OR "requestId" = ANY(${ids}))
+      AND (status = 'Approved'::"PettyCashStatus" OR status = 'Auto_Approved'::"PettyCashStatus")
     `;
   }
 
@@ -79,7 +84,7 @@ export class ApprovalRepository implements IApprovalRepository {
           "utrReference" = ${utr},
           "totalPaid" = "netPayable",
           "paymentMode" = 'Bank_Transfer'::"PaymentMode"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
     `;
   }
 
@@ -90,7 +95,7 @@ export class ApprovalRepository implements IApprovalRepository {
           "paymentDate" = NOW(),
           "transactionId" = ${utr},
           "paymentMode" = 'Bank_Transfer'::"PaymentMode"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "billId" = ANY(${ids}))
     `;
   }
 
@@ -101,25 +106,40 @@ export class ApprovalRepository implements IApprovalRepository {
           "paymentDate" = NOW(),
           "transactionId" = ${utr},
           "paymentMode" = 'Bank_Transfer'::"PaymentMode"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "requestId" = ANY(${ids}))
     `;
   }
 
   async getRentPaymentsByIds(ids: string[]): Promise<any[]> {
     return this.prisma.rentPayment.findMany({
-      where: { id: { in: ids } }
+      where: {
+        OR: [
+          { id: { in: ids } },
+          { paymentId: { in: ids } }
+        ]
+      }
     });
   }
 
   async getUtilityBillsByIds(ids: string[]): Promise<any[]> {
     return this.prisma.utilityBill.findMany({
-      where: { id: { in: ids } }
+      where: {
+        OR: [
+          { id: { in: ids } },
+          { billId: { in: ids } }
+        ]
+      }
     });
   }
 
   async getPettyCashByIds(ids: string[]): Promise<any[]> {
     return this.prisma.pettyCashRequest.findMany({
-      where: { id: { in: ids } }
+      where: {
+        OR: [
+          { id: { in: ids } },
+          { requestId: { in: ids } }
+        ]
+      }
     });
   }
 }

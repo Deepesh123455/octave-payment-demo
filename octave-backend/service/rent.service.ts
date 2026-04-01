@@ -74,16 +74,16 @@ export class RentService implements IRentService {
     await this.rentRepo.bulkApprove(ids);
     
     // Create notifications for Approval Center
-    for (const item of items) {
-      await this.notificationRepo.createNotification({
-        storeId: item.storeId,
-        adminEmail: "all",
-        title: "Rent Approved",
-        message: `Rent payment (ID: ${item.paymentId}) has been approved and is waiting for payment in the Approval Center.`,
-        type: "APPROVAL",
-        rentPaymentId: item.paymentId
-      });
-    }
+    const notifications = items.map(item => ({
+      storeId: item.storeId,
+      adminEmail: "all",
+      title: "Rent Approved",
+      message: `Rent payment (ID: ${item.paymentId}) has been approved and is waiting for payment in the Approval Center.`,
+      type: "APPROVAL",
+      rentPaymentId: item.paymentId
+    }));
+
+    await this.notificationRepo.createManyNotifications(notifications);
   }
 
   async rejectPayments(ids: string[]): Promise<void> {

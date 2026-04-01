@@ -11,13 +11,27 @@ export class RentRepository implements IRentRepository {
 
   async findAll(): Promise<any[]> {
     return this.prisma.rentPayment.findMany({
-      include: {
-        store: {
-          select: { storeName: true }
-        },
-        landlord: {
-          select: { companyName: true }
-        }
+      select: {
+        id: true,
+        paymentId: true,
+        storeId: true,
+        landlordId: true,
+        paymentMonth: true,
+        amount: true,
+        latePenalty: true,
+        totalPaid: true,
+        dueDate: true,
+        paymentDate: true,
+        paymentMode: true,
+        utrReference: true,
+        status: true,
+        tdsDeducted: true,
+        gst: true,
+        netPayable: true,
+        invoiceNumber: true,
+        remarks: true,
+        store: { select: { storeName: true } },
+        landlord: { select: { companyName: true } }
       },
       orderBy: { dueDate: "desc" }
     });
@@ -38,13 +52,13 @@ export class RentRepository implements IRentRepository {
         SET status = ${status}::"PaymentStatus",
             "paymentDate" = NOW(),
             "utrReference" = ${utrReference}
-        WHERE id::text = ANY(${ids})
+        WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
       `;
     } else {
       await this.prisma.$executeRaw`
         UPDATE rent_payments
         SET status = ${status}::"PaymentStatus"
-        WHERE id::text = ANY(${ids})
+        WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
       `;
     }
   }
@@ -53,7 +67,7 @@ export class RentRepository implements IRentRepository {
     await this.prisma.$executeRaw`
       UPDATE rent_payments
       SET status = 'Approved'::"PaymentStatus"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
       AND status IN ('Pending', 'Overdue', 'Pending_Approval', 'Rejected')
     `;
   }
@@ -62,7 +76,7 @@ export class RentRepository implements IRentRepository {
     await this.prisma.$executeRaw`
       UPDATE rent_payments
       SET status = 'Rejected'::"PaymentStatus"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "paymentId" = ANY(${ids}))
       AND status IN ('Pending', 'Overdue', 'Pending_Approval')
     `;
   }

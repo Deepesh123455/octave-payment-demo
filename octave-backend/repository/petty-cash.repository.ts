@@ -11,7 +11,9 @@ export class PettyCashRepository implements IPettyCashRepository {
 
   async findAll(filters?: { storeId?: string; status?: string }): Promise<any[]> {
     return this.prisma.$queryRaw`
-      SELECT pcr.*, 
+      SELECT pcr.id, pcr."requestId", pcr."storeId", pcr."requestedBy", 
+             pcr."requestDate", pcr.amount, pcr.category, pcr.description, 
+             pcr.status,
              s."storeName"
       FROM petty_cash_requests pcr
       LEFT JOIN stores s ON pcr."storeId" = s."storeId"
@@ -46,7 +48,7 @@ export class PettyCashRepository implements IPettyCashRepository {
           "approvedBy" = ${approvedBy},
           "approvalDate" = NOW(),
           "updatedAt" = NOW()
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "requestId" = ANY(${ids}))
       AND (status = 'Pending_CFO' OR status = 'Escalated' OR status = 'Rejected')
     `;
   }
@@ -64,7 +66,7 @@ export class PettyCashRepository implements IPettyCashRepository {
       UPDATE petty_cash_requests
       SET status = ${status}::"PettyCashStatus",
           "updatedAt" = NOW()
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "requestId" = ANY(${ids}))
     `;
   }
 }

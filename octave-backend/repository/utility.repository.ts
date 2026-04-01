@@ -6,8 +6,17 @@ export class UtilityRepository implements IUtilityRepository {
 
   async findAll(): Promise<any[]> {
     return this.prisma.utilityBill.findMany({
-      include: {
-        store: true,
+      select: {
+        id: true,
+        billId: true,
+        storeId: true,
+        utilityType: true,
+        providerName: true,
+        billMonth: true,
+        billAmount: true,
+        dueDate: true,
+        status: true,
+        store: { select: { storeName: true } }
       },
       orderBy: {
         dueDate: "desc",
@@ -21,7 +30,7 @@ export class UtilityRepository implements IUtilityRepository {
         id: { in: ids },
       },
       include: {
-        store: true,
+        store: { select: { storeName: true } }
       },
     });
   }
@@ -30,7 +39,7 @@ export class UtilityRepository implements IUtilityRepository {
     await this.prisma.$executeRaw`
       UPDATE utility_bills
       SET status = 'Approved'::"PaymentStatus"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "billId" = ANY(${ids}))
       AND status IN ('Pending', 'Overdue', 'Pending_Approval', 'Rejected')
     `;
   }
@@ -39,7 +48,7 @@ export class UtilityRepository implements IUtilityRepository {
     await this.prisma.$executeRaw`
       UPDATE utility_bills
       SET status = 'Rejected'::"PaymentStatus"
-      WHERE id::text = ANY(${ids})
+      WHERE (id::text = ANY(${ids}) OR "billId" = ANY(${ids}))
       AND status IN ('Pending', 'Overdue', 'Pending_Approval')
     `;
   }

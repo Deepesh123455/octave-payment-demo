@@ -145,32 +145,40 @@ export class ApprovalService implements IApprovalService {
     ]);
 
     // Create notifications for transactions
-    for (const rent of rents) {
-      await this.notificationRepo.createNotification({
+    const notifications: any[] = [];
+
+    rents.forEach(rent => {
+      notifications.push({
         storeId: rent.storeId,
         adminEmail: "all",
         title: "Payment Successful",
         message: `Rent payment (ID: ${rent.paymentId}) processed (UTR: ${razorpay_payment_id}).`,
         type: "TRANSACTION",
       });
-    }
-    for (const util of utilities) {
-      await this.notificationRepo.createNotification({
+    });
+
+    utilities.forEach(util => {
+      notifications.push({
         storeId: util.storeId,
         adminEmail: "all",
         title: "Payment Successful",
         message: `Utility payment (ID: ${util.billId}) processed (UTR: ${razorpay_payment_id}).`,
         type: "TRANSACTION",
       });
-    }
-    for (const pc of pettyCashItems) {
-      await this.notificationRepo.createNotification({
+    });
+
+    pettyCashItems.forEach(pc => {
+      notifications.push({
         storeId: pc.storeId,
         adminEmail: "all",
         title: "Payment Successful",
         message: `Petty Cash payment (ID: ${pc.requestId}) processed (UTR: ${razorpay_payment_id}).`,
         type: "TRANSACTION",
       });
+    });
+
+    if (notifications.length > 0) {
+      await this.notificationRepo.createManyNotifications(notifications);
     }
   }
 
@@ -201,8 +209,10 @@ export class ApprovalService implements IApprovalService {
     ]);
 
     // Create notifications for rejected items
-    for (const rent of rents) {
-      await this.notificationRepo.createNotification({
+    const notifications: any[] = [];
+
+    rents.forEach(rent => {
+      notifications.push({
         storeId: rent.storeId,
         adminEmail: "all",
         title: "Item Rejected",
@@ -210,9 +220,10 @@ export class ApprovalService implements IApprovalService {
         type: "RENT_DUE",
         rentPaymentId: rent.paymentId
       });
-    }
-    for (const util of utilities) {
-      await this.notificationRepo.createNotification({
+    });
+
+    utilities.forEach(util => {
+      notifications.push({
         storeId: util.storeId,
         adminEmail: "all",
         title: "Item Rejected",
@@ -220,9 +231,10 @@ export class ApprovalService implements IApprovalService {
         type: "UTILITY_DUE",
         utilityBillId: util.billId
       });
-    }
-    for (const pc of pettyCashItems) {
-      await this.notificationRepo.createNotification({
+    });
+
+    pettyCashItems.forEach(pc => {
+      notifications.push({
         storeId: pc.storeId,
         adminEmail: "all",
         title: "Item Rejected",
@@ -230,6 +242,10 @@ export class ApprovalService implements IApprovalService {
         type: "PETTY_CASH",
         pettyCashId: pc.requestId
       });
+    });
+
+    if (notifications.length > 0) {
+      await this.notificationRepo.createManyNotifications(notifications);
     }
   }
 

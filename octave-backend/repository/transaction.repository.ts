@@ -24,7 +24,7 @@ export class TransactionRepository {
   async getAllTransactions(): Promise<TransactionItem[]> {
     const [rentPayments, utilityBills, pettyCashRequests] = await Promise.all([
       this.prisma.$queryRaw`
-        SELECT rp.*, 
+        SELECT rp.id, rp."storeId", rp."paymentMonth", rp."totalPaid", rp.amount, rp."paymentDate", rp."utrReference",
                s."storeName",
                l."companyName" as "ownerName"
         FROM rent_payments rp
@@ -34,7 +34,7 @@ export class TransactionRepository {
         ORDER BY rp."paymentDate" DESC
       `,
       this.prisma.$queryRaw`
-        SELECT ub.*,
+        SELECT ub.id, ub."storeId", ub."billMonth", ub."utilityType", ub."billAmount", ub."paymentDate", ub."transactionId", ub."providerName",
                s."storeName"
         FROM utility_bills ub
         LEFT JOIN stores s ON ub."storeId" = s."storeId"
@@ -42,7 +42,7 @@ export class TransactionRepository {
         ORDER BY ub."paymentDate" DESC
       `,
       this.prisma.$queryRaw`
-        SELECT pcr.*,
+        SELECT pcr.id, pcr."storeId", pcr.category, pcr.description, pcr.amount, pcr."paymentDate", pcr."transactionId", pcr."vendorName",
                s."storeName"
         FROM petty_cash_requests pcr
         LEFT JOIN stores s ON pcr."storeId" = s."storeId"

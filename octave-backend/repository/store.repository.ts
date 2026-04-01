@@ -11,6 +11,19 @@ export class StoreRepository implements IStoreRepository {
 
   async findAll(): Promise<Store[]> {
     return this.prisma.store.findMany({
+      select: {
+        id: true,
+        storeId: true,
+        storeName: true,
+        city: true,
+        state: true,
+        region: true,
+        mallOrMarket: true,
+        type: true,
+        managerName: true,
+        storeStatus: true,
+        monthlyRent: true,
+      },
       orderBy: { storeId: "asc" },
     });
   }
