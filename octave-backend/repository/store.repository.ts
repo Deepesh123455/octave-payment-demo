@@ -9,7 +9,7 @@ export class StoreRepository implements IStoreRepository {
     this.prisma = prisma;
   }
 
-  async findAll(): Promise<Store[]> {
+  async findAll(): Promise<any[]> {
     return this.prisma.store.findMany({
       select: {
         id: true,

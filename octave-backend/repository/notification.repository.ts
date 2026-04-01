@@ -13,7 +13,7 @@ export class NotificationRepository {
     this.prisma = prismaInstance || prisma;
   }
 
-  async getUnreadNotifications(): Promise<Notification[]> {
+  async getUnreadNotifications(): Promise<any[]> {
     return this.prisma.notification.findMany({
       where: { isRead: false },
       orderBy: { sentAt: "desc" },
