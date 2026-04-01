@@ -34,7 +34,7 @@ const navItems = [
   { title: "Approval Center", url: "/approvals", icon: CheckCircle },
   { title: "Transactions", url: "/transactions", icon: HistoryIcon },
   { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-  { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
+  // { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
 ];
 
 export function AppSidebar() {
@@ -55,7 +55,7 @@ export function AppSidebar() {
     { title: "Approval Center", url: "/approvals", icon: CheckCircle, count: getCount("APPROVAL") },
     { title: "Transactions", url: "/transactions", icon: HistoryIcon, count: getCount("TRANSACTION") },
     { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-    { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
+    // { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
   ];
 
   return (

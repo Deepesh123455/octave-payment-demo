@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 // import { useTransactions } from "@/hooks/apis/useTransactionQueries";
 import { useTransactions } from "@/hooks/apis/useTransactionQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
-import { Transaction } from "@/api/api.transaction";
+
 import { Button } from "@/components/ui/button";
 
 export default function TransactionsPage() {

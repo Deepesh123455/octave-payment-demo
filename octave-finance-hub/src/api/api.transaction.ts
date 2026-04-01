@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+import { api } from "./api.auth";
 
 export interface Transaction {
   id: string;
@@ -16,9 +14,6 @@ export interface Transaction {
 }
 
 export const getTransactions = async (): Promise<{ data: Transaction[] }> => {
-  const token = localStorage.getItem("octave_token");
-  const response = await axios.get(`${API_BASE_URL}/transactions`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const response = await api.get("transactions");
   return response.data;
 };

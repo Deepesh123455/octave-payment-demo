@@ -29,7 +29,7 @@ export class TransactionRepository {
                l."companyName" as "ownerName"
         FROM rent_payments rp
         LEFT JOIN stores s ON rp."storeId" = s."storeId"
-        LEFT JOIN landlords l ON rp."landlordId" = l.id
+        LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"
         WHERE rp.status = 'Paid'
         ORDER BY rp."paymentDate" DESC
       `,

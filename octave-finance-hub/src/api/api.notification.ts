@@ -1,24 +1,16 @@
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
+import { api } from "./api.auth";
 
 export const fetchUnreadNotifications = async () => {
-  const response = await axios.get(`${API_URL}/notifications`, {
-    withCredentials: true,
-  });
+  const response = await api.get("notifications");
   return response.data;
 };
 
 export const fetchNotificationCounts = async () => {
-  const response = await axios.get(`${API_URL}/notifications/counts`, {
-    withCredentials: true,
-  });
+  const response = await api.get("notifications/counts");
   return response.data;
 };
 
 export const markNotificationsRead = async (payload: { ids?: string[]; type?: string }) => {
-  const response = await axios.post(`${API_URL}/notifications/mark-read`, payload, {
-    withCredentials: true,
-  });
+  const response = await api.post("notifications/mark-read", payload);
   return response.data;
 };
