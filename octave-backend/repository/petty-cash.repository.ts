@@ -83,7 +83,7 @@ export class PettyCashRepository implements IPettyCashRepository {
           "approvalDate" = NOW(),
           "updatedAt" = NOW()
       WHERE (id::text = ANY(${ids}) OR "requestId" = ANY(${ids}))
-      AND (status = 'Pending_CFO' OR status = 'Escalated' OR status = 'Rejected')
+      AND (status = 'Pending' OR status = 'Pending_CFO' OR status = 'Escalated' OR status = 'Rejected')
     `;
   }
 
