@@ -133,7 +133,6 @@ export default function UtilityBills() {
               <TabsTrigger value="All" className="px-6">All</TabsTrigger>
               <TabsTrigger value="Pending" className="px-6">Pending</TabsTrigger>
               <TabsTrigger value="Overdue" className="px-6 text-destructive data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">Overdue</TabsTrigger>
-              <TabsTrigger value="Pending_Approval" className="px-6">Pending Approval</TabsTrigger>
               <TabsTrigger value="Approved" className="px-6">Approved</TabsTrigger>
               <TabsTrigger value="Paid" className="px-6 text-success data-[state=active]:bg-success data-[state=active]:text-success-foreground">Paid</TabsTrigger>
               <TabsTrigger value="Rejected" className="px-6 text-destructive data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">Rejected</TabsTrigger>

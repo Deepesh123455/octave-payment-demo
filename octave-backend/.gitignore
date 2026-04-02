@@ -7,3 +7,5 @@ dist/
 .idea/
 prisma/*.db
 prisma/*.db-journal
+data/
+octave_apparels_synthetic_dataset.json

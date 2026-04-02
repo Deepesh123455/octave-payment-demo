@@ -237,7 +237,6 @@ export default function PettyCash() {
               <TabsList className="bg-secondary/50 p-1 inline-flex w-max">
                 <TabsTrigger value="All" className="px-5">All</TabsTrigger>
                 <TabsTrigger value="Pending" className="px-5">Pending</TabsTrigger>
-                <TabsTrigger value="Escalated" className="px-5 text-destructive data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">Escalated</TabsTrigger>
                 <TabsTrigger value="Auto_Approved" className="px-5">Auto Approved</TabsTrigger>
                 <TabsTrigger value="Approved" className="px-5">Approved</TabsTrigger>
                 <TabsTrigger value="Paid" className="px-5 text-success data-[state=active]:bg-success data-[state=active]:text-success-foreground">Paid</TabsTrigger>
