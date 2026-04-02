@@ -1,14 +1,14 @@
 import { UtilityBill } from "@prisma/client";
 
 export interface IUtilityRepository {
-  findAll(): Promise<any[]>;
+  findAll(page?: number, limit?: number, status?: string): Promise<{ data: any[]; meta: any }>;
   findByIds(ids: string[]): Promise<any[]>;
   bulkApprove(ids: string[]): Promise<void>;
   rejectUtilities(ids: string[]): Promise<void>;
 }
 
 export interface IUtilityService {
-  getAllUtilities(): Promise<any[]>;
+  getAllUtilities(page?: number, limit?: number, status?: string): Promise<{ data: any[]; meta: any }>;
   approveUtilities(ids: string[]): Promise<void>;
   rejectUtilities(ids: string[]): Promise<void>;
 }

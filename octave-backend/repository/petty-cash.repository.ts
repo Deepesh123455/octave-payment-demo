@@ -9,18 +9,46 @@ export class PettyCashRepository implements IPettyCashRepository {
     this.prisma = prisma;
   }
 
-  async findAll(filters?: { storeId?: string; status?: string }): Promise<any[]> {
-    return this.prisma.$queryRaw`
-      SELECT pcr.id, pcr."requestId", pcr."storeId", pcr."requestedBy", 
-             pcr."requestDate", pcr.amount, pcr.category, pcr.description, 
-             pcr.status,
-             s."storeName"
-      FROM petty_cash_requests pcr
-      LEFT JOIN stores s ON pcr."storeId" = s."storeId"
-      WHERE (${filters?.storeId ? true : false} = false OR pcr."storeId" = ${filters?.storeId})
-      AND (${filters?.status ? true : false} = false OR pcr.status::text = ${filters?.status})
-      ORDER BY pcr."requestDate" DESC
-    `;
+  async findAll(filters?: { storeId?: string; status?: string; page?: number; limit?: number }): Promise<{ data: any[]; meta: any }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (filters?.storeId) where.storeId = filters.storeId;
+    if (filters?.status && filters.status !== "All") where.status = filters.status;
+
+    const [data, total] = await Promise.all([
+      this.prisma.pettyCashRequest.findMany({
+        where,
+        select: {
+          id: true,
+          requestId: true,
+          storeId: true,
+          requestedBy: true,
+          requestDate: true,
+          amount: true,
+          category: true,
+          description: true,
+          status: true,
+          store: { select: { storeName: true } }
+        },
+        orderBy: { requestDate: "desc" },
+        skip,
+        take: limit,
+      }),
+      this.prisma.pettyCashRequest.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit
+      }
+    };
   }
 
   async create(data: any): Promise<any> {

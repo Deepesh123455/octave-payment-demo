@@ -8,15 +8,16 @@ import { Search, Loader2, AlertCircle, History, Building2, Zap, Receipt, Downloa
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
 import { useQuery } from "@tanstack/react-query";
-// import { useTransactions } from "@/hooks/apis/useTransactionQueries";
 import { useTransactions } from "@/hooks/apis/useTransactionQueries";
+import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function TransactionsPage() {
-  const { data: response, isLoading, isError, error } = useTransactions();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading, isError, error } = useTransactions(page, 20);
   const [search, setSearch] = useState("");
   const { mutate: markRead } = useMarkRead();
 
@@ -178,6 +179,15 @@ export default function TransactionsPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+            {!isLoading && !isError && response?.meta && (
+              <div className="pt-4 mt-6 border-t border-border/50">
+                <DynamicPagination 
+                  currentPage={response.meta.currentPage} 
+                  totalPages={response.meta.totalPages} 
+                  onPageChange={setPage} 
+                />
               </div>
             )}
           </CardContent>

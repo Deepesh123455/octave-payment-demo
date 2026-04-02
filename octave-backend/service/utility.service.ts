@@ -1,5 +1,6 @@
 import { IUtilityRepository, IUtilityService } from "../interfaces/utility.interface";
 import { NotificationRepository } from "../repository/notification.repository";
+import { CacheService } from "../utils/cache";
 
 export class UtilityService implements IUtilityService {
   constructor(
@@ -7,8 +8,10 @@ export class UtilityService implements IUtilityService {
     private notificationRepo: NotificationRepository
   ) {}
 
-  async getAllUtilities(): Promise<any[]> {
-    return this.utilityRepo.findAll();
+  async getAllUtilities(page: number = 1, limit: number = 50, status?: string): Promise<{ data: any[], meta: any }> {
+    return CacheService.getOrSet("UTILITY", { page, limit, status }, () =>
+      this.utilityRepo.findAll(page, limit, status)
+    );
   }
 
   async approveUtilities(ids: string[]): Promise<void> {
@@ -24,9 +27,13 @@ export class UtilityService implements IUtilityService {
         utilityBillId: item.billId
       });
     }
+
+    // Invalidate caches
+    await CacheService.invalidateMultiple(["UTILITY", "APPROVAL", "NOTIFICATION"]);
   }
 
   async rejectUtilities(ids: string[]): Promise<void> {
     await this.utilityRepo.rejectUtilities(ids);
+    await CacheService.invalidateMultiple(["UTILITY", "APPROVAL", "NOTIFICATION"]);
   }
 }

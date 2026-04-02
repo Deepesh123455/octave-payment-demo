@@ -6,11 +6,14 @@ export class TransactionController {
 
   async getAllTransactions(req: Request, res: Response, next: NextFunction) {
     try {
-      const transactions = await this.transactionService.getAllTransactions();
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+
+      const result = await this.transactionService.getAllTransactions(page, limit);
       res.status(200).json({
         status: "success",
-        results: transactions.length,
-        data: transactions,
+        meta: result.meta,
+        data: result.data,
       });
     } catch (error) {
       next(error);

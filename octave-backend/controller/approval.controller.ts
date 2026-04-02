@@ -6,8 +6,13 @@ export class ApprovalController {
 
   async getApprovedItems(req: Request, res: Response): Promise<void> {
     try {
-      const items = await this.approvalService.getApprovedItems();
-      res.status(200).json({ success: true, data: items });
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const storeId = req.query.storeId as string | undefined;
+      const sourceType = req.query.sourceType as string | undefined;
+
+      const result = await this.approvalService.getApprovedItems(page, limit, storeId, sourceType);
+      res.status(200).json({ success: true, meta: result.meta, data: result.data });
     } catch (error: any) {
       res.status(error.statusCode || 500).json({
         success: false,

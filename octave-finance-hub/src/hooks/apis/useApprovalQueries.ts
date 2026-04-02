@@ -6,10 +6,10 @@ import {
   rejectApprovalItems,
 } from "@/api/api.approval";
 
-export const useApprovedItems = () => {
+export const useApprovedItems = (page: number = 1, limit: number = 20, storeId?: string, sourceType?: string) => {
   return useQuery({
-    queryKey: ["approvedItems"],
-    queryFn: fetchApprovedItems,
+    queryKey: ["approvedItems", page, limit, storeId, sourceType],
+    queryFn: () => fetchApprovedItems(page, limit, storeId, sourceType),
   });
 };
 

@@ -1,7 +1,9 @@
 import { api } from "./api.auth";
 
-export const fetchPettyCashRequests = async (filters?: { storeId?: string; status?: string }) => {
-  const response = await api.get("/petty-cash", { params: filters });
+export const fetchPettyCashRequests = async (filters?: { storeId?: string; status?: string; page?: number; limit?: number }) => {
+  const params: any = { ...filters };
+  if (params.status === "All") delete params.status;
+  const response = await api.get("/petty-cash", { params });
   return response.data;
 };
 

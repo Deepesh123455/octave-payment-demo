@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchRentPayments, initiatePayment, confirmPayment, approvePayments, rejectPayments } from "@/api/api.rent";
 
-export const useRentPayments = () => {
+export const useRentPayments = (page: number = 1, limit: number = 50, status?: string) => {
   return useQuery({
-    queryKey: ["rent-payments"],
-    queryFn: fetchRentPayments,
+    queryKey: ["rent-payments", page, limit, status],
+    queryFn: () => fetchRentPayments(page, limit, status),
   });
 };
 

@@ -7,11 +7,15 @@ export class RentController {
 
   getRentPayments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const payments = await this.rentService.getAllRentPayments();
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const status = req.query.status as string | undefined;
+
+      const result = await this.rentService.getAllRentPayments(page, limit, status);
       res.status(200).json({
         status: "success",
-        results: payments.length,
-        data: payments,
+        meta: result.meta,
+        data: result.data,
       });
     } catch (error) {
       next(error);

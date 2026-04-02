@@ -1,14 +1,19 @@
 import { Store } from "@prisma/client";
 import { IStoreRepository, IStoreService } from "../interfaces/store.interface";
+import { CacheService } from "../utils/cache";
 
 export class StoreService implements IStoreService {
   constructor(private storeRepo: IStoreRepository) {}
 
   async getAllStores(): Promise<any[]> {
-    return this.storeRepo.findAll();
+    return CacheService.getOrSet("STORE", { all: true }, () =>
+      this.storeRepo.findAll()
+    );
   }
 
   async getStoreById(id: string): Promise<Store | null> {
-    return this.storeRepo.findById(id);
+    return CacheService.getOrSet("STORE", { id }, () =>
+      this.storeRepo.findById(id)
+    );
   }
 }

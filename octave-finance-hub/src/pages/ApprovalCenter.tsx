@@ -32,6 +32,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency } from "@/data/sampleData";
 import {
   useApprovedItems,
@@ -39,6 +40,7 @@ import {
   useConfirmApprovalPayment,
   useRejectApprovalItems,
 } from "@/hooks/apis/useApprovalQueries";
+import { useStores } from "@/hooks/apis/useStoreQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -60,16 +62,23 @@ export default function ApprovalCenter() {
     markRead({ type: "APPROVAL" });
   }, []);
   const navigate = useNavigate();
-  const [storeFilter, setStoreFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [storeId, setStoreId] = useState<string>("all");
+  const [sourceType, setSourceType] = useState<string>("all");
   const [rejectTarget, setRejectTarget] = useState<{ id: string; sourceType: SourceType; description: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const isPrivileged =
     user?.role === "SUPER_ADMIN" || user?.role === "FINANCE_ADMIN";
 
-  const { data: response, isLoading, isError, error } = useApprovedItems();
+  const { data: response, isLoading, isError, error } = useApprovedItems(
+    page, 
+    20, 
+    storeId === "all" ? undefined : storeId,
+    sourceType === "all" ? undefined : sourceType
+  );
+  const { data: storesResponse } = useStores();
   const { mutateAsync: initiate } = useInitiateApprovalPayment();
   const { mutateAsync: confirm } = useConfirmApprovalPayment();
   const { mutateAsync: reject } = useRejectApprovalItems();
@@ -97,23 +106,21 @@ export default function ApprovalCenter() {
 
   const filtered = useMemo(() => {
     return items.filter((item: any) => {
-      const matchStore = storeFilter === "all" || item.storeId === storeFilter;
-      const matchType = typeFilter === "all" || item.sourceType === typeFilter;
       const matchSearch =
         item.description.toLowerCase().includes(search.toLowerCase()) ||
         item.storeName.toLowerCase().includes(search.toLowerCase()) ||
         item.category.toLowerCase().includes(search.toLowerCase());
-      return matchStore && matchType && matchSearch;
+      return matchSearch;
     });
-  }, [items, storeFilter, typeFilter, search]);
+  }, [items, search]);
 
   const totals = useMemo(() => ({
-    count: filtered.length,
+    count: response?.meta?.totalRecords || 0,
     amount: filtered.reduce((s: number, i: any) => s + i.amount, 0),
-    rent: filtered.filter((i: any) => i.sourceType === "RENT").length,
-    utility: filtered.filter((i: any) => i.sourceType === "UTILITY").length,
-    petty: filtered.filter((i: any) => i.sourceType === "PETTY_CASH").length,
-  }), [filtered]);
+    rent: response?.meta?.counts?.RENT || 0,
+    utility: response?.meta?.counts?.UTILITY || 0,
+    petty: response?.meta?.counts?.PETTY_CASH || 0,
+  }), [response, filtered]);
 
   const toggleSelect = (item: any) => {
     const key = `${item.sourceType}-${item.id}`;
@@ -219,11 +226,14 @@ export default function ApprovalCenter() {
           <div>
             <h1 className="page-header">Approval Center</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {totals.count} approved items · {formatCurrency(totals.amount)} total
+              {response?.meta?.totalRecords || totals.count} items approved globally
             </p>
           </div>
           {/* Summary Pills & Bulk Actions */}
           <div className="flex flex-col items-end gap-3">
+            <div className="flex gap-2 text-muted-foreground text-sm italic">
+              Totals represent current page matches
+            </div>
             <div className="flex gap-2">
               <div className="flex items-center gap-1.5 bg-secondary/50 rounded-full px-3 py-1.5 text-xs font-medium">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
@@ -287,40 +297,43 @@ export default function ApprovalCenter() {
 
         <Card>
           {/* Filters */}
-          <CardHeader className="pb-4 border-b">
-            <div className="flex flex-col sm:flex-row gap-3">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search approvals..."
+                  placeholder="Filter items on this page..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
                 />
               </div>
-              <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="w-52">
-                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Stores" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stores</SelectItem>
-                  {uniqueStores.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-44">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="RENT">Rent</SelectItem>
-                  <SelectItem value="UTILITY">Utility</SelectItem>
-                  <SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
-                </SelectContent>
-              </Select>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={storeId} onValueChange={(val) => { setStoreId(val); setPage(1); }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Stores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stores</SelectItem>
+                    {storesResponse?.data?.map((s: any) => (
+                      <SelectItem key={s.storeId} value={s.storeId}>{s.storeName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sourceType} onValueChange={(val) => { setSourceType(val); setPage(1); }}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="RENT">Rent</SelectItem>
+                    <SelectItem value="UTILITY">Utility</SelectItem>
+                    <SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
 
@@ -460,6 +473,15 @@ export default function ApprovalCenter() {
                 </div>
               )}
             </AnimatePresence>
+            {!isLoading && !isError && response?.meta && (
+              <div className="p-4 border-t">
+                <DynamicPagination 
+                  currentPage={response.meta.currentPage} 
+                  totalPages={response.meta.totalPages} 
+                  onPageChange={setPage} 
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

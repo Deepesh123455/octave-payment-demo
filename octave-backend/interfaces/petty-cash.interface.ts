@@ -19,7 +19,7 @@ export interface PettyCashRequest {
 }
 
 export interface IPettyCashRepository {
-  findAll(filters?: { storeId?: string; status?: string }): Promise<any[]>;
+  findAll(filters?: { storeId?: string; status?: string; page?: number; limit?: number }): Promise<{ data: any[]; meta: any }>;
   create(data: any): Promise<any>;
   bulkApprove(ids: string[], approvedBy: string): Promise<void>;
   findByIds(ids: string[]): Promise<any[]>;
@@ -27,7 +27,7 @@ export interface IPettyCashRepository {
 }
 
 export interface IPettyCashService {
-  getAllRequests(filters?: { storeId?: string; status?: string }): Promise<any[]>;
+  getAllRequests(filters?: { storeId?: string; status?: string; page?: number; limit?: number }): Promise<{ data: any[]; meta: any }>;
   createRequest(data: any): Promise<any>;
   approveRequests(ids: string[], approvedBy: string): Promise<void>;
   rejectRequests(ids: string[], rejectedBy: string): Promise<void>;

@@ -9,6 +9,7 @@ import {
 } from "../interfaces/approval.interface";
 import { ApiError } from "../utils/AppError";
 import { NotificationRepository } from "../repository/notification.repository";
+import { CacheService } from "../utils/cache";
 
 export class ApprovalService implements IApprovalService {
   private razorpay: Razorpay;
@@ -23,51 +24,9 @@ export class ApprovalService implements IApprovalService {
     });
   }
 
-  async getApprovedItems(): Promise<ApprovalItem[]> {
-    const [rentPayments, utilityBills, pettyCashRequests] = await Promise.all([
-      this.approvalRepo.getApprovedRentPayments(),
-      this.approvalRepo.getApprovedUtilityBills(),
-      this.approvalRepo.getApprovedPettyCash(),
-    ]);
-
-    const rentItems: ApprovalItem[] = rentPayments.map((r: any) => ({
-      id: r.id,
-      sourceType: "RENT" as ApprovalSourceType,
-      storeName: r.storeName || "Unknown Store",
-      storeId: r.storeId,
-      category: "Rent",
-      description: `${r.paymentMonth} rent payment`,
-      amount: Number(r.netPayable) || Number(r.amount),
-      dueDate: r.dueDate,
-      status: r.status,
-    }));
-
-    const utilityItems: ApprovalItem[] = utilityBills.map((u: any) => ({
-      id: u.id,
-      sourceType: "UTILITY" as ApprovalSourceType,
-      storeName: u.storeName || "Unknown Store",
-      storeId: u.storeId,
-      category: this.formatUtilityType(u.utilityType),
-      description: `${u.billMonth} ${this.formatUtilityType(u.utilityType).toLowerCase()} bill - ${u.providerName}`,
-      amount: Number(u.billAmount),
-      dueDate: u.dueDate,
-      status: u.status,
-    }));
-
-    const pettyCashItems: ApprovalItem[] = pettyCashRequests.map((p: any) => ({
-      id: p.id,
-      sourceType: "PETTY_CASH" as ApprovalSourceType,
-      storeName: p.storeName || "Unknown Store",
-      storeId: p.storeId,
-      category: p.category,
-      description: `${p.description} - Requested by ${p.requestedBy}`,
-      amount: Number(p.amount),
-      dueDate: p.requestDate,
-      status: p.status,
-    }));
-
-    return [...rentItems, ...utilityItems, ...pettyCashItems].sort(
-      (a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()
+  async getApprovedItems(page: number = 1, limit: number = 20, storeId?: string, sourceType?: string): Promise<{ data: ApprovalItem[]; meta: any }> {
+    return CacheService.getOrSet("APPROVAL", { page, limit, storeId, sourceType }, () =>
+      this.approvalRepo.getPaginatedApprovedItems(page, limit, storeId, sourceType)
     );
   }
 
@@ -78,17 +37,26 @@ export class ApprovalService implements IApprovalService {
       throw new ApiError("No items provided for payment", 400);
     }
 
-    // Fetch all approved items to get amounts
-    const allApproved = await this.getApprovedItems();
-    const selectedItems = allApproved.filter((a) =>
-      items.some((i) => i.id === a.id && i.sourceType === a.sourceType)
-    );
+    const rentIds = items.filter((i) => i.sourceType === "RENT").map((i) => i.id);
+    const utilityIds = items.filter((i) => i.sourceType === "UTILITY").map((i) => i.id);
+    const pettyCashIds = items.filter((i) => i.sourceType === "PETTY_CASH").map((i) => i.id);
 
-    if (selectedItems.length === 0) {
+    const [rents, utilities, pettyCash] = await Promise.all([
+      rentIds.length > 0 ? this.approvalRepo.getRentPaymentsByIds(rentIds) : [],
+      utilityIds.length > 0 ? this.approvalRepo.getUtilityBillsByIds(utilityIds) : [],
+      pettyCashIds.length > 0 ? this.approvalRepo.getPettyCashByIds(pettyCashIds) : [],
+    ]);
+
+    const foundCount = rents.length + utilities.length + pettyCash.length;
+    if (foundCount === 0) {
       throw new ApiError("No approved items found for provided IDs", 400);
     }
 
-    const totalAmount = selectedItems.reduce((sum, item) => sum + item.amount, 0);
+    let totalAmount = 0;
+    rents.forEach(r => totalAmount += (Number(r.netPayable) || Number(r.amount)));
+    utilities.forEach(u => totalAmount += Number(u.billAmount));
+    pettyCash.forEach(p => totalAmount += Number(p.amount));
+
     const amountInPaise = Math.round(totalAmount * 100);
 
     const options = {
@@ -180,6 +148,9 @@ export class ApprovalService implements IApprovalService {
     if (notifications.length > 0) {
       await this.notificationRepo.createManyNotifications(notifications);
     }
+
+    // Invalidate caches
+    await CacheService.invalidateMultiple(["APPROVAL", "RENT", "UTILITY", "PETTY_CASH", "NOTIFICATION", "TRANSACTION"]);
   }
 
   async rejectItems(
@@ -247,6 +218,9 @@ export class ApprovalService implements IApprovalService {
     if (notifications.length > 0) {
       await this.notificationRepo.createManyNotifications(notifications);
     }
+
+    // Invalidate caches
+    await CacheService.invalidateMultiple(["APPROVAL", "RENT", "UTILITY", "PETTY_CASH", "NOTIFICATION"]);
   }
 
   private formatUtilityType(type: string): string {

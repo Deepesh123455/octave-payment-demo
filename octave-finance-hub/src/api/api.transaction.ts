@@ -13,7 +13,7 @@ export interface Transaction {
   description: string;
 }
 
-export const getTransactions = async (): Promise<{ data: Transaction[] }> => {
-  const response = await api.get("transactions");
+export const getTransactions = async (page: number = 1, limit: number = 50): Promise<{ data: Transaction[]; meta?: any }> => {
+  const response = await api.get(`/transactions?page=${page}&limit=${limit}`);
   return response.data;
 };

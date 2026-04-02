@@ -6,10 +6,15 @@ export class UtilityController {
 
   async getAllUtilities(req: Request, res: Response): Promise<void> {
     try {
-      const utilities = await this.utilityService.getAllUtilities();
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const status = req.query.status as string | undefined;
+
+      const result = await this.utilityService.getAllUtilities(page, limit, status);
       res.status(200).json({
         success: true,
-        data: utilities,
+        meta: result.meta,
+        data: result.data,
       });
     } catch (error: any) {
       res.status(error.statusCode || 500).json({

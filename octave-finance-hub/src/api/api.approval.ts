@@ -1,7 +1,10 @@
 import { api } from "./api.auth";
 
-export const fetchApprovedItems = async () => {
-  const response = await api.get("/approval");
+export const fetchApprovedItems = async (page: number = 1, limit: number = 20, storeId?: string, sourceType?: string) => {
+  let url = `/approval?page=${page}&limit=${limit}`;
+  if (storeId) url += `&storeId=${storeId}`;
+  if (sourceType) url += `&sourceType=${sourceType}`;
+  const response = await api.get(url);
   return response.data;
 };
 

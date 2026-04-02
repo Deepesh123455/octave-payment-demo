@@ -1,7 +1,12 @@
 import { api } from "./api.auth";
 
-export const fetchUtilities = async () => {
-  const response = await api.get("/utility");
+export const fetchUtilities = async (page: number = 1, limit: number = 50, status?: string) => {
+  const params = new URLSearchParams();
+  if (page) params.append("page", page.toString());
+  if (limit) params.append("limit", limit.toString());
+  if (status && status !== "All") params.append("status", status);
+
+  const response = await api.get(`/utility?${params.toString()}`);
   return response.data;
 };
 

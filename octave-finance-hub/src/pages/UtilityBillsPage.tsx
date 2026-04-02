@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Wifi, Droplets, Building, Cog, Loader2, AlertCircle, CheckCircle, Filter, FileCheck, XCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency } from "@/data/sampleData";
 import { useUtilityBills, useApproveUtilities, useRejectUtilities } from "@/hooks/apis/useUtilityQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
@@ -30,25 +31,22 @@ const typeLabels: Record<string, string> = {
 
 export default function UtilityBills() {
   const [selected, setSelected] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("Pending");
+  const [activeTab, setActiveTab] = useState("All");
+  const [page, setPage] = useState(1);
   const { mutate: markRead } = useMarkRead();
 
   useEffect(() => {
     markRead({ type: "UTILITY_DUE" });
   }, []);
   
-  const { data: utilityResponse, isLoading, isError, error } = useUtilityBills();
+  const { data: utilityResponse, isLoading, isError, error } = useUtilityBills(page, 20, activeTab);
   const { mutateAsync: approve } = useApproveUtilities();
   const { mutateAsync: reject } = useRejectUtilities();
 
 
 
   const rawBills = utilityResponse?.data || [];
-
-  const filteredBills = useMemo(() => {
-    if (activeTab === "All") return rawBills;
-    return rawBills.filter((b: any) => b.status === activeTab);
-  }, [rawBills, activeTab]);
+  const filteredBills = rawBills;
 
   // Group filtered bills by store
   const groupedByStore = useMemo(() => {
@@ -129,7 +127,7 @@ export default function UtilityBills() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelected([]); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); setSelected([]); }} className="w-full">
           <div className="flex items-center justify-between mb-4">
             <TabsList className="bg-secondary/50 p-1">
               <TabsTrigger value="All" className="px-6">All</TabsTrigger>
@@ -143,7 +141,7 @@ export default function UtilityBills() {
             
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-full">
               <Filter className="h-3 w-3" />
-              <span>{filteredBills.length} bills in this view</span>
+              <span>{utilityResponse?.meta?.totalRecords || filteredBills.length} bills in this view</span>
             </div>
           </div>
 
@@ -166,7 +164,22 @@ export default function UtilityBills() {
                     <Card key={storeId} className="overflow-hidden border-none shadow-sm bg-card/50">
                       <CardHeader className="pb-3 border-b bg-secondary/10">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base font-bold">{storeName}</CardTitle>
+                          <div className="flex items-center gap-4">
+                            <Checkbox 
+                              checked={bills.length > 0 && 
+                                bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).length > 0 && 
+                                bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).every((b: any) => selected.includes(b.id))}
+                              onCheckedChange={(checked) => {
+                                const actionableIds = bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).map((b: any) => b.id);
+                                if (checked) {
+                                  setSelected(prev => [...new Set([...prev, ...actionableIds])]);
+                                } else {
+                                  setSelected(prev => prev.filter(id => !actionableIds.includes(id)));
+                                }
+                              }}
+                            />
+                            <CardTitle className="text-base font-bold">{storeName}</CardTitle>
+                          </div>
                           {pendingTotal > 0 && (
                             <span className="text-sm font-semibold text-accent">Pending: {formatCurrency(pendingTotal)}</span>
                           )}
@@ -206,7 +219,7 @@ export default function UtilityBills() {
                                     </Badge>
                                   </div>
                                 </div>
-                                {canApprove && (
+                                {canApprove ? (
                                   <div className="flex gap-1 mt-2">
                                     <Button 
                                       size="sm" 
@@ -216,14 +229,22 @@ export default function UtilityBills() {
                                     >
                                       <FileCheck className="h-3.5 w-3.5 mr-1.5" /> Approve
                                     </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="flex-1 h-8 text-[11px] font-bold border-destructive/20 text-destructive hover:bg-destructive/5"
-                                      onClick={() => handleReject(bill.id)}
-                                    >
-                                      <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
-                                    </Button>
+                                    {bill.status !== "Rejected" && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="flex-1 h-8 text-[11px] font-bold border-destructive/20 text-destructive hover:bg-destructive/5"
+                                        onClick={() => handleReject(bill.id)}
+                                      >
+                                        <XCircle className="h-3.5 w-3.5 mr-1.5" /> Reject
+                                      </Button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 text-center">
+                                    <span className="text-[10px] text-muted-foreground italic px-2 py-1 bg-secondary/20 rounded-md block">
+                                      {bill.status === "Paid" ? "Paid" : bill.status === "Approved" ? "Approved" : "Rejected"}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -245,6 +266,15 @@ export default function UtilityBills() {
               </div>
             )}
           </AnimatePresence>
+          {!isLoading && !isError && utilityResponse?.meta && (
+            <div className="p-4 mt-6 border-t pt-8">
+              <DynamicPagination 
+                currentPage={utilityResponse.meta.currentPage} 
+                totalPages={utilityResponse.meta.totalPages} 
+                onPageChange={setPage} 
+              />
+            </div>
+          )}
         </Tabs>
       </motion.div>
     </AppLayout>

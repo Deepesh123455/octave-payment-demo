@@ -1,6 +1,7 @@
 import { IPettyCashRepository, IPettyCashService } from "../interfaces/petty-cash.interface";
 import { ApiError } from "../utils/AppError";
 import { NotificationRepository } from "../repository/notification.repository";
+import { CacheService } from "../utils/cache";
 
 export class PettyCashService implements IPettyCashService {
   constructor(
@@ -8,8 +9,10 @@ export class PettyCashService implements IPettyCashService {
     private notificationRepo: NotificationRepository
   ) {}
 
-  async getAllRequests(filters?: { storeId?: string; status?: string }): Promise<any[]> {
-    return this.pettyCashRepo.findAll(filters);
+  async getAllRequests(filters?: { storeId?: string; status?: string; page?: number; limit?: number }): Promise<{ data: any[]; meta: any }> {
+    return CacheService.getOrSet("PETTY_CASH", filters || {}, () =>
+      this.pettyCashRepo.findAll(filters)
+    );
   }
 
   async createRequest(data: any): Promise<any> {
@@ -53,6 +56,7 @@ export class PettyCashService implements IPettyCashService {
       pettyCashId: requestId
     });
 
+    await CacheService.invalidateMultiple(["PETTY_CASH", "NOTIFICATION"]);
     return result;
   }
 
@@ -74,6 +78,7 @@ export class PettyCashService implements IPettyCashService {
     }));
 
     await this.notificationRepo.createManyNotifications(notifications);
+    await CacheService.invalidateMultiple(["PETTY_CASH", "APPROVAL", "NOTIFICATION"]);
   }
 
   async rejectRequests(ids: string[], rejectedBy: string): Promise<void> {
@@ -82,5 +87,6 @@ export class PettyCashService implements IPettyCashService {
     }
     // Update status to Rejected
     await this.pettyCashRepo.updateStatus(ids, "Rejected");
+    await CacheService.invalidateMultiple(["PETTY_CASH", "APPROVAL", "NOTIFICATION"]);
   }
 }

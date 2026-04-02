@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchUtilities, approveUtilities, rejectUtilities } from "@/api/api.utility";
 
-export const useUtilityBills = () => {
+export const useUtilityBills = (page: number = 1, limit: number = 50, status?: string) => {
   return useQuery({
-    queryKey: ["utilityBills"],
-    queryFn: fetchUtilities,
+    queryKey: ["utilityBills", page, limit, status],
+    queryFn: () => fetchUtilities(page, limit, status),
   });
 };
 

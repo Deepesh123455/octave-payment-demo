@@ -7,7 +7,7 @@ const isSecure = REDIS_URL.startsWith("rediss://");
 
 const redisClient = new Redis(REDIS_URL, {
   maxRetriesPerRequest: null,
-  // For rediss:// URLs, ioredis requires a tls object (even if empty)
+  
   tls: isSecure ? { rejectUnauthorized: false } : undefined,
   retryStrategy(times: number) {
     if (times > MAX_RETRY_ATTEMPTS) {
@@ -22,7 +22,7 @@ const redisClient = new Redis(REDIS_URL, {
   },
 
   // Allow commands to queue during the initial connection phase
-  enableOfflineQueue: true,
+  enableOfflineQueue: false,
 
   // Keep-alive to detect stale connections
   keepAlive: 10_000,

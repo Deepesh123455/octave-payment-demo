@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { IRentRepository, IRentService, VerifyPaymentPayload } from "../interfaces/rent.interface";
 import { ApiError } from "../utils/AppError";
 import { NotificationRepository } from "../repository/notification.repository";
+import { CacheService } from "../utils/cache";
 
 export class RentService implements IRentService {
   private razorpay: Razorpay;
@@ -17,8 +18,10 @@ export class RentService implements IRentService {
     });
   }
 
-  async getAllRentPayments(): Promise<any[]> {
-    return this.rentRepo.findAll();
+  async getAllRentPayments(page: number = 1, limit: number = 50, status?: string): Promise<{ data: any[]; meta: any }> {
+    return CacheService.getOrSet("RENT", { page, limit, status }, () =>
+      this.rentRepo.findAll(page, limit, status)
+    );
   }
 
   async createRazorpayOrder(paymentIds: string[]): Promise<any> {
@@ -67,6 +70,9 @@ export class RentService implements IRentService {
 
     // Update status to Paid for all selected payments
     await this.rentRepo.updateStatus(paymentIds, "Paid", razorpay_payment_id);
+    
+    // Invalidate caches
+    await CacheService.invalidateMultiple(["RENT", "APPROVAL", "NOTIFICATION", "TRANSACTION"]);
   }
 
   async approvePayments(ids: string[]): Promise<void> {
@@ -84,10 +90,13 @@ export class RentService implements IRentService {
     }));
 
     await this.notificationRepo.createManyNotifications(notifications);
+
+    // Invalidate caches
+    await CacheService.invalidateMultiple(["RENT", "APPROVAL", "NOTIFICATION"]);
   }
 
   async rejectPayments(ids: string[]): Promise<void> {
     await this.rentRepo.rejectPayments(ids);
-    // Optionally create a notification for rejection, but usually items just stay in the same list or move to a 'Rejected' status.
+    await CacheService.invalidateMultiple(["RENT", "APPROVAL", "NOTIFICATION"]);
   }
 }

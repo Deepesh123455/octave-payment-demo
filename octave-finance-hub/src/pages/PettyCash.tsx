@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Receipt, CheckCircle, Clock, AlertTriangle, Plus, Loader2, Filter, FileCheck, XCircle, AlertCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency, getStatusLabel } from "@/data/sampleData";
 import { usePettyCashRequests, useCreatePettyCash, useApprovePettyCash, useRejectPettyCash } from "@/hooks/apis/usePettyCashQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
@@ -25,7 +26,8 @@ const categories = ["Store Supplies", "Repairs", "Marketing", "Maintenance", "Co
 export default function PettyCash() {
   const { user, isAdmin } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("Pending_CFO");
+  const [activeTab, setActiveTab] = useState("All");
+  const [page, setPage] = useState(1);
   const { mutate: markRead } = useMarkRead();
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function PettyCash() {
     description: "",
   });
 
-  const { data: pettyResponse, isLoading, isError, error } = usePettyCashRequests();
+  const { data: pettyResponse, isLoading, isError, error } = usePettyCashRequests({ page, limit: 20, status: activeTab });
   const { data: storesResponse } = useStores();
   const { mutateAsync: createRequest, isPending: isCreating } = useCreatePettyCash();
   const { mutateAsync: approveRequests } = useApprovePettyCash();
@@ -50,10 +52,7 @@ export default function PettyCash() {
   const requests = pettyResponse?.data || [];
   const stores = storesResponse?.data || [];
 
-  const filteredRecords = useMemo(() => {
-    if (activeTab === "All") return requests;
-    return requests.filter((r: any) => r.status === activeTab);
-  }, [requests, activeTab]);
+  const filteredRecords = requests;
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -61,7 +60,7 @@ export default function PettyCash() {
 
   const toggleAllInTab = () => {
     const selectable = filteredRecords.filter((r: any) => {
-      return !["Approved", "Paid", "Auto_Approved", "Rejected"].includes(r.status);
+      return !["Approved", "Paid", "Auto_Approved"].includes(r.status);
     });
     
     const selectableIds = selectable.map((r: any) => r.id);
@@ -77,7 +76,7 @@ export default function PettyCash() {
     if (selected.length === 0 || !isAdmin) return false;
     return selected.every(id => {
       const rec = requests.find((r: any) => r.id === id);
-      return rec && !["Approved", "Paid", "Auto_Approved", "Rejected"].includes(rec.status);
+      return rec && !["Approved", "Paid", "Auto_Approved"].includes(rec.status);
     });
   }, [selected, requests, isAdmin]);
 
@@ -232,7 +231,7 @@ export default function PettyCash() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelected([]); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); setSelected([]); }} className="w-full">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
             <div className="overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
               <TabsList className="bg-secondary/50 p-1 inline-flex w-max">
@@ -248,7 +247,7 @@ export default function PettyCash() {
             
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-full whitespace-nowrap self-start md:self-auto">
               <Filter className="h-3 w-3" />
-              <span>{filteredRecords.length} records</span>
+              <span>{pettyResponse?.meta?.totalRecords || filteredRecords.length} records</span>
             </div>
           </div>
 
@@ -273,8 +272,8 @@ export default function PettyCash() {
                           {isAdmin && (
                             <Checkbox 
                               checked={filteredRecords.length > 0 && 
-                                filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved", "Rejected"].includes(r.status)).length > 0 && 
-                                filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved", "Rejected"].includes(r.status)).every((r: any) => selected.includes(r.id))}
+                              filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).length > 0 && 
+                              filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).every((r: any) => selected.includes(r.id))}
                               onCheckedChange={toggleAllInTab}
                             />
                           )}
@@ -295,14 +294,14 @@ export default function PettyCash() {
                           filteredRecords.map((r: any) => (
                             <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b transition-colors hover:bg-muted/50">
                               <TableCell className="text-center">
-                                {isAdmin && !["Approved", "Paid", "Auto_Approved", "Rejected"].includes(r.status) && (
+                                {isAdmin && !["Approved", "Paid", "Auto_Approved"].includes(r.status) && (
                                   <Checkbox 
                                     checked={selected.includes(r.id)} 
                                     onCheckedChange={() => toggleSelect(r.id)} 
                                   />
                                 )}
                               </TableCell>
-                              <TableCell className="font-medium whitespace-nowrap">{r.storeName}</TableCell>
+                              <TableCell className="font-medium whitespace-nowrap">{r.store?.storeName || "Octave General"}</TableCell>
                               <TableCell className="text-sm shadow-none whitespace-nowrap">{r.requestedBy}</TableCell>
                               <TableCell className="whitespace-nowrap">{r.category}</TableCell>
                               <TableCell className="text-sm truncate max-w-xs">{r.description}</TableCell>
@@ -315,7 +314,7 @@ export default function PettyCash() {
                               </TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  {r.status !== "Paid" ? (
+                                  {r.status === "Pending" || r.status === "Pending_CFO" || r.status === "Escalated" || r.status === "Rejected" ? (
                                     <div className="flex items-center justify-end gap-1">
                                       <Button 
                                         size="sm" 
@@ -325,17 +324,21 @@ export default function PettyCash() {
                                       >
                                         <FileCheck className="h-4 w-4" />
                                       </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="ghost" 
-                                        className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleReject(r.id)}
-                                      >
-                                        <XCircle className="h-4 w-4" />
-                                      </Button>
+                                      {r.status !== "Rejected" && (
+                                        <Button 
+                                          size="sm" 
+                                          variant="ghost" 
+                                          className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                          onClick={() => handleReject(r.id)}
+                                        >
+                                          <XCircle className="h-4 w-4" />
+                                        </Button>
+                                      )}
                                     </div>
                                   ) : (
-                                    <span className="text-[10px] text-muted-foreground bg-secondary/30 px-2 py-1 rounded-md italic">Paid</span>
+                                    <span className="text-[10px] text-muted-foreground bg-secondary/30 px-2 py-1 rounded-md italic">
+                                      {r.status === "Paid" ? "Paid" : r.status === "Approved" || r.status === "Auto_Approved" ? "Approved" : "Rejected"}
+                                    </span>
                                   )}
                                 </TableCell>
                               )}
@@ -356,6 +359,15 @@ export default function PettyCash() {
                       </AnimatePresence>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              {!isLoading && !isError && pettyResponse?.meta && (
+                <div className="p-4 border-t">
+                  <DynamicPagination 
+                    currentPage={pettyResponse.meta.currentPage} 
+                    totalPages={pettyResponse.meta.totalPages} 
+                    onPageChange={setPage} 
+                  />
                 </div>
               )}
             </CardContent>

@@ -21,78 +21,67 @@ export class TransactionRepository {
     this.prisma = prisma;
   }
 
-  async getAllTransactions(): Promise<TransactionItem[]> {
-    const [rentPayments, utilityBills, pettyCashRequests] = await Promise.all([
-      this.prisma.$queryRaw`
-        SELECT rp.id, rp."storeId", rp."paymentMonth", rp."totalPaid", rp.amount, rp."paymentDate", rp."utrReference",
-               s."storeName",
-               l."companyName" as "ownerName"
+  async getAllTransactions(page: number = 1, limit: number = 20): Promise<{ data: TransactionItem[]; meta: any }> {
+    const skip = (page - 1) * limit;
+
+    const dataRaw: any[] = await this.prisma.$queryRaw`
+      SELECT * FROM (
+        SELECT rp.id, rp."storeId", COALESCE(rp."totalPaid", rp.amount) as amount, rp."paymentDate" as date, 'RENT' as "sourceType", rp."utrReference" as "transactionId", 'Rent'::text as category, rp."paymentMonth" || ' rent payment' as description, s."storeName", l."companyName" as "ownerName"
         FROM rent_payments rp
         LEFT JOIN stores s ON rp."storeId" = s."storeId"
         LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"
         WHERE rp.status = 'Paid'
-        ORDER BY rp."paymentDate" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT ub.id, ub."storeId", ub."billMonth", ub."utilityType", ub."billAmount", ub."paymentDate", ub."transactionId", ub."providerName",
-               s."storeName"
+        
+        UNION ALL
+        
+        SELECT ub.id, ub."storeId", ub."billAmount" as amount, ub."paymentDate" as date, 'UTILITY' as "sourceType", ub."transactionId", ub."utilityType"::text as category, ub."billMonth" || ' utility bill' as description, s."storeName", ub."providerName" as "ownerName"
         FROM utility_bills ub
         LEFT JOIN stores s ON ub."storeId" = s."storeId"
         WHERE ub.status = 'Paid'
-        ORDER BY ub."paymentDate" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT pcr.id, pcr."storeId", pcr.category, pcr.description, pcr.amount, pcr."paymentDate", pcr."transactionId", pcr."vendorName",
-               s."storeName"
+
+        UNION ALL
+
+        SELECT pcr.id, pcr."storeId", pcr.amount, pcr."paymentDate" as date, 'PETTY_CASH' as "sourceType", pcr."transactionId", pcr.category::text, pcr.description, s."storeName", pcr."vendorName" as "ownerName"
         FROM petty_cash_requests pcr
         LEFT JOIN stores s ON pcr."storeId" = s."storeId"
         WHERE pcr.status = 'Paid'
-        ORDER BY pcr."paymentDate" DESC
-      `
-    ]);
+      ) as combined
+      ORDER BY combined.date DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `;
 
-    const rentItems: TransactionItem[] = (rentPayments as any[]).map((r) => ({
-      id: r.id,
-      sourceType: "RENT",
-      storeId: r.storeId,
-      storeName: r.storeName || "Unknown Store",
-      ownerName: r.ownerName || "Unknown Owner",
-      amount: Number(r.totalPaid) || Number(r.amount),
-      date: r.paymentDate,
-      transactionId: r.utrReference || "N/A",
-      category: "Rent",
-      description: `${r.paymentMonth} rent payment`
+    const countRaw: any[] = await this.prisma.$queryRaw`
+      SELECT SUM(count) as total FROM (
+        SELECT COUNT(*) as count FROM rent_payments WHERE status = 'Paid'
+        UNION ALL
+        SELECT COUNT(*) as count FROM utility_bills WHERE status = 'Paid'
+        UNION ALL
+        SELECT COUNT(*) as count FROM petty_cash_requests WHERE status = 'Paid'
+      ) as count_combined
+    `;
+    const total = Number(countRaw[0]?.total || 0);
+
+    const mappedData: TransactionItem[] = dataRaw.map(row => ({
+      id: row.id,
+      sourceType: row.sourceType,
+      storeId: row.storeId,
+      storeName: row.storeName || "Unknown Store",
+      ownerName: row.ownerName || (row.sourceType === "UTILITY" ? "Utility Provider" : "Vendor"),
+      amount: Number(row.amount),
+      date: row.date,
+      transactionId: row.transactionId || "N/A",
+      category: row.category,
+      description: row.description
     }));
 
-    const utilityItems: TransactionItem[] = (utilityBills as any[]).map((u) => ({
-      id: u.id,
-      sourceType: "UTILITY",
-      storeId: u.storeId,
-      storeName: u.storeName || "Unknown Store",
-      ownerName: u.providerName || "Utility Provider",
-      amount: Number(u.billAmount),
-      date: u.paymentDate,
-      transactionId: u.transactionId || "N/A",
-      category: u.utilityType,
-      description: `${u.billMonth} ${u.utilityType.toLowerCase()} bill`
-    }));
-
-    const pettyCashItems: TransactionItem[] = (pettyCashRequests as any[]).map((p) => ({
-      id: p.id,
-      sourceType: "PETTY_CASH",
-      storeId: p.storeId,
-      storeName: p.storeName || "Unknown Store",
-      ownerName: p.vendorName || "Vendor",
-      amount: Number(p.amount),
-      date: p.paymentDate,
-      transactionId: p.transactionId || "N/A",
-      category: p.category,
-      description: p.description
-    }));
-
-    // Combine and sort by date DESC
-    return [...rentItems, ...utilityItems, ...pettyCashItems].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    return {
+      data: mappedData,
+      meta: {
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit
+      }
+    };
   }
 }

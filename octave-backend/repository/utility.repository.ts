@@ -4,24 +4,43 @@ import { IUtilityRepository } from "../interfaces/utility.interface";
 export class UtilityRepository implements IUtilityRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async findAll(): Promise<any[]> {
-    return this.prisma.utilityBill.findMany({
-      select: {
-        id: true,
-        billId: true,
-        storeId: true,
-        utilityType: true,
-        providerName: true,
-        billMonth: true,
-        billAmount: true,
-        dueDate: true,
-        status: true,
-        store: { select: { storeName: true } }
-      },
-      orderBy: {
-        dueDate: "desc",
-      },
-    });
+  async findAll(page: number = 1, limit: number = 20, status?: string): Promise<{ data: any[], meta: any }> {
+    const skip = (page - 1) * limit;
+    const where: any = status && status !== "All" ? { status } : {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.utilityBill.findMany({
+        where,
+        select: {
+          id: true,
+          billId: true,
+          storeId: true,
+          utilityType: true,
+          providerName: true,
+          billMonth: true,
+          billAmount: true,
+          dueDate: true,
+          status: true,
+          store: { select: { storeName: true } }
+        },
+        orderBy: {
+          dueDate: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.utilityBill.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit
+      }
+    };
   }
 
   async findByIds(ids: string[]): Promise<any[]> {

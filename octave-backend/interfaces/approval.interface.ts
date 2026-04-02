@@ -20,9 +20,7 @@ export interface VerifyApprovalPaymentPayload {
 }
 
 export interface IApprovalRepository {
-  getApprovedRentPayments(): Promise<any[]>;
-  getApprovedUtilityBills(): Promise<any[]>;
-  getApprovedPettyCash(): Promise<any[]>;
+  getPaginatedApprovedItems(page?: number, limit?: number, storeId?: string, sourceType?: string): Promise<{ data: ApprovalItem[]; meta: any }>;
   rejectRentPayments(ids: string[]): Promise<void>;
   rejectUtilityBills(ids: string[]): Promise<void>;
   rejectPettyCash(ids: string[]): Promise<void>;
@@ -35,7 +33,7 @@ export interface IApprovalRepository {
 }
 
 export interface IApprovalService {
-  getApprovedItems(): Promise<ApprovalItem[]>;
+  getApprovedItems(page?: number, limit?: number, storeId?: string, sourceType?: string): Promise<{ data: ApprovalItem[]; meta: any }>;
   initiatePayment(items: Array<{ id: string; sourceType: ApprovalSourceType }>): Promise<any>;
   confirmPayment(payload: VerifyApprovalPaymentPayload): Promise<void>;
   rejectItems(items: Array<{ id: string; sourceType: ApprovalSourceType }>): Promise<void>;

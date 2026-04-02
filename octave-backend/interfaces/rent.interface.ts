@@ -1,7 +1,7 @@
 import { RentPayment } from "@prisma/client";
 
 export interface IRentRepository {
-  findAll(): Promise<RentPayment[]>;
+  findAll(page?: number, limit?: number, status?: string): Promise<{ data: any[]; meta: any }>;
   findByIds(ids: string[]): Promise<RentPayment[]>;
   updateStatus(ids: string[], status: any, utrReference?: string): Promise<void>;
   bulkApprove(ids: string[]): Promise<void>;
@@ -9,7 +9,7 @@ export interface IRentRepository {
 }
 
 export interface IRentService {
-  getAllRentPayments(): Promise<RentPayment[]>;
+  getAllRentPayments(page?: number, limit?: number, status?: string): Promise<{ data: any[]; meta: any }>;
   createRazorpayOrder(paymentIds: string[]): Promise<any>;
   verifyPayment(payload: any): Promise<void>;
   approvePayments(ids: string[]): Promise<void>;

@@ -6,7 +6,7 @@ import {
   rejectPettyCashRequests
 } from "@/api/api.petty-cash";
 
-export const usePettyCashRequests = (filters?: { storeId?: string; status?: string }) => {
+export const usePettyCashRequests = (filters?: { storeId?: string; status?: string; page?: number; limit?: number }) => {
   return useQuery({
     queryKey: ["pettyCash", filters],
     queryFn: () => fetchPettyCashRequests(filters),

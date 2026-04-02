@@ -7,15 +7,20 @@ export class PettyCashController {
 
   getAllRequests = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { storeId, status } = req.query;
-      const requests = await this.pettyCashService.getAllRequests({
+      const { storeId, status, page, limit } = req.query;
+      const parsedPage = page ? parseInt(page as string, 10) : 1;
+      const parsedLimit = limit ? parseInt(limit as string, 10) : 20;
+
+      const result = await this.pettyCashService.getAllRequests({
         storeId: storeId as string,
-        status: status as string
+        status: status as string,
+        page: parsedPage,
+        limit: parsedLimit
       });
       res.status(200).json({
         status: "success",
-        results: requests.length,
-        data: requests
+        meta: result.meta,
+        data: result.data
       });
     } catch (error) {
       next(error);

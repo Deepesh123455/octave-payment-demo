@@ -6,6 +6,8 @@ import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import fs from "fs";
+import path from "path";
 
 // ── Local Imports ─────────────────────────────────────────────────────────
 import { prisma } from "./config/db";
@@ -103,6 +105,21 @@ const bootstrap = async () => {
     // Test DB
     await prisma.$connect();
     console.log("[DB] ✅ Successfully connected to PostgreSQL via Prisma.");
+
+    // Ensure indexes are applied
+    try {
+      const indexesSqlPath = path.join(__dirname, "indexes.sql");
+      if (fs.existsSync(indexesSqlPath)) {
+        const sql = fs.readFileSync(indexesSqlPath, "utf-8");
+        const statements = sql.split(';').filter(s => s.trim().length > 0);
+        for (const statement of statements) {
+          await prisma.$executeRawUnsafe(statement);
+        }
+        console.log("[DB] ✅ Successfully applied explicit index creations.");
+      }
+    } catch (e: any) {
+      console.error("[DB] ⚠️ Could not apply explicit indexes:", e.message);
+    }
 
     // Test Redis (with a small retry loop to allow for async connection setup)
     let pong = "";

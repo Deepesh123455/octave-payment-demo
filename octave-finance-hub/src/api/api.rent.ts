@@ -23,8 +23,13 @@ export interface RentPayment {
   landlord?: { companyName: string };
 }
 
-export const fetchRentPayments = async () => {
-  const response = await api.get("rent");
+export const fetchRentPayments = async (page: number = 1, limit: number = 50, status?: string) => {
+  const params = new URLSearchParams();
+  if (page) params.append("page", page.toString());
+  if (limit) params.append("limit", limit.toString());
+  if (status && status !== "All") params.append("status", status);
+
+  const response = await api.get(`rent?${params.toString()}`);
   return response.data;
 };
 

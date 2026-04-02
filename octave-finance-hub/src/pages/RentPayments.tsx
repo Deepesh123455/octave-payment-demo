@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, Loader2, AlertCircle, Filter, FileCheck, XCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency } from "@/data/sampleData";
 import { useRentPayments, useApprovePayments, useRejectRentPayments } from "@/hooks/apis/useRentQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
@@ -17,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function RentPayments() {
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("All");
+  const [page, setPage] = useState(1);
   const { user } = useAuth();
   const { mutate: markRead } = useMarkRead();
 
@@ -24,11 +26,9 @@ export default function RentPayments() {
     markRead({ type: "RENT_DUE" });
   }, []);
   
-  const { data: rentResponse, isLoading, isError, error } = useRentPayments();
+  const { data: rentResponse, isLoading, isError, error } = useRentPayments(page, 20, activeTab);
   const { mutateAsync: approve } = useApprovePayments();
   const { mutateAsync: reject } = useRejectRentPayments();
-
-
 
   const rentRecords = rentResponse?.data || [];
 
@@ -48,10 +48,7 @@ export default function RentPayments() {
     });
   }, [rentRecords]);
 
-  const filteredRecords = useMemo(() => {
-    if (activeTab === "All") return processRecords;
-    return processRecords.filter((r: any) => r.status === activeTab);
-  }, [processRecords, activeTab]);
+  const filteredRecords = processRecords;
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -171,7 +168,7 @@ export default function RentPayments() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSelected([]); }} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); setSelected([]); }} className="w-full">
           <div className="flex items-center justify-between mb-4">
             <TabsList className="bg-secondary/50 p-1 flex-wrap">
               <TabsTrigger value="All" className="px-6">All</TabsTrigger>
@@ -185,7 +182,7 @@ export default function RentPayments() {
             
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/30 px-3 py-1.5 rounded-full">
               <Filter className="h-3 w-3" />
-              <span>{filteredRecords.length} records in this view</span>
+              <span>{rentResponse?.meta?.totalRecords || filteredRecords.length} records in this view</span>
             </div>
           </div>
 
@@ -267,17 +264,21 @@ export default function RentPayments() {
                                     >
                                       <FileCheck className="h-4 w-4" />
                                     </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost" 
-                                      className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      onClick={() => handleReject(r.id)}
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                    </Button>
+                                    {r.status !== "Rejected" && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleReject(r.id)}
+                                      >
+                                        <XCircle className="h-4 w-4" />
+                                      </Button>
+                                    )}
                                   </div>
                                 ) : (
-                                  <span className="text-[10px] text-muted-foreground italic px-2">Processed</span>
+                                  <span className="text-[10px] text-muted-foreground italic px-2">
+                                    {r.status === "Paid" ? "Paid" : r.status === "Approved" ? "Approved" : "Rejected"}
+                                  </span>
                                 )}
                               </TableCell>
                             </motion.tr>
@@ -297,6 +298,15 @@ export default function RentPayments() {
                       </AnimatePresence>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              {!isLoading && !isError && rentResponse?.meta && (
+                <div className="p-4 border-t">
+                  <DynamicPagination 
+                    currentPage={rentResponse.meta.currentPage} 
+                    totalPages={rentResponse.meta.totalPages} 
+                    onPageChange={setPage} 
+                  />
                 </div>
               )}
             </CardContent>

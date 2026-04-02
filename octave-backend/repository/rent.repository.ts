@@ -9,32 +9,51 @@ export class RentRepository implements IRentRepository {
     this.prisma = prisma;
   }
 
-  async findAll(): Promise<any[]> {
-    return this.prisma.rentPayment.findMany({
-      select: {
-        id: true,
-        paymentId: true,
-        storeId: true,
-        landlordId: true,
-        paymentMonth: true,
-        amount: true,
-        latePenalty: true,
-        totalPaid: true,
-        dueDate: true,
-        paymentDate: true,
-        paymentMode: true,
-        utrReference: true,
-        status: true,
-        tdsDeducted: true,
-        gst: true,
-        netPayable: true,
-        invoiceNumber: true,
-        remarks: true,
-        store: { select: { storeName: true } },
-        landlord: { select: { companyName: true } }
-      },
-      orderBy: { dueDate: "desc" }
-    });
+  async findAll(page: number = 1, limit: number = 20, status?: string): Promise<{ data: any[], meta: any }> {
+    const skip = (page - 1) * limit;
+    const where: any = status && status !== "All" ? { status } : {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.rentPayment.findMany({
+        where,
+        select: {
+          id: true,
+          paymentId: true,
+          storeId: true,
+          landlordId: true,
+          paymentMonth: true,
+          amount: true,
+          latePenalty: true,
+          totalPaid: true,
+          dueDate: true,
+          paymentDate: true,
+          paymentMode: true,
+          utrReference: true,
+          status: true,
+          tdsDeducted: true,
+          gst: true,
+          netPayable: true,
+          invoiceNumber: true,
+          remarks: true,
+          store: { select: { storeName: true } },
+          landlord: { select: { companyName: true } }
+        },
+        orderBy: { dueDate: "desc" },
+        skip,
+        take: limit,
+      }),
+      this.prisma.rentPayment.count({ where })
+    ]);
+
+    return {
+      data,
+      meta: {
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        limit
+      }
+    };
   }
 
   async findByIds(ids: string[]): Promise<RentPayment[]> {
