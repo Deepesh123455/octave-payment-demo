@@ -165,19 +165,19 @@ export default function UtilityBills() {
                       <CardHeader className="pb-3 border-b bg-secondary/10">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <Checkbox 
-                              checked={bills.length > 0 && 
-                                bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).length > 0 && 
-                                bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).every((b: any) => selected.includes(b.id))}
-                              onCheckedChange={(checked) => {
-                                const actionableIds = bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).map((b: any) => b.id);
-                                if (checked) {
-                                  setSelected(prev => [...new Set([...prev, ...actionableIds])]);
-                                } else {
-                                  setSelected(prev => prev.filter(id => !actionableIds.includes(id)));
-                                }
-                              }}
-                            />
+                            {bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).length > 0 && (
+                              <Checkbox 
+                                checked={bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).every((b: any) => selected.includes(b.id))}
+                                onCheckedChange={(checked) => {
+                                  const actionableIds = bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).map((b: any) => b.id);
+                                  if (checked) {
+                                    setSelected(prev => [...new Set([...prev, ...actionableIds])]);
+                                  } else {
+                                    setSelected(prev => prev.filter(id => !actionableIds.includes(id)));
+                                  }
+                                }}
+                              />
+                            )}
                             <CardTitle className="text-base font-bold">{storeName}</CardTitle>
                           </div>
                           {pendingTotal > 0 && (
@@ -266,7 +266,7 @@ export default function UtilityBills() {
               </div>
             )}
           </AnimatePresence>
-          {!isLoading && !isError && utilityResponse?.meta && (
+          {!isLoading && !isError && utilityResponse?.meta && utilityResponse.meta.totalPages > 1 && (
             <div className="p-4 mt-6 border-t pt-8">
               <DynamicPagination 
                 currentPage={utilityResponse.meta.currentPage} 

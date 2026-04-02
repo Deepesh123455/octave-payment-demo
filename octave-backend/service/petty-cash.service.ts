@@ -23,11 +23,11 @@ export class PettyCashService implements IPettyCashService {
     }
 
     // Determine status based on business logic:
-    // ≤ ₹3,000: Auto_Approved
-    // ₹3,001 - ₹5,000: Pending_CFO
+    // < ₹2,000: Auto_Approved
+    // ₹2,000 - ₹5,000: Pending_CFO
     // > ₹5,000: Escalated
     let status = "Pending_CFO";
-    if (amount <= 3000) {
+    if (amount < 2000) {
       status = "Auto_Approved";
     } else if (amount > 5000) {
       status = "Escalated";

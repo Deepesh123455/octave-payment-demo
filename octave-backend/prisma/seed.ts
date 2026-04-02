@@ -255,24 +255,30 @@ async function seedRentPayments() {
 
 async function seedUtilityBills() {
   console.log("⚡ Seeding utility bills...");
-  const rows = raw.utility_bills.map((u: any) => ({
-    billId: u.bill_id,
-    storeId: u.store_id,
-    utilityType: mapUtilityType(u.utility_type),
-    providerName: u.provider_name,
-    billMonth: u.bill_month,
-    billAmount: u.bill_amount,
-    consumerNumber: u.consumer_number ?? null,
-    dueDate: toDateRequired(u.due_date),
-    paymentDate: toDate(u.payment_date),
-    paymentMode: mapPaymentMode(u.payment_mode),
-    transactionId: u.transaction_id ?? null,
-    status: mapPaymentStatus(u.status),
-    meterReading: u.meter_reading ?? null,
-    unitsConsumed: u.units_consumed ?? null,
-    tallyLedger: u.tally_ledger,
-    tallyCostCenter: u.tally_cost_center,
-  }));
+  const rows = raw.utility_bills.map((u: any) => {
+    let status = mapPaymentStatus(u.status);
+    if (u.bill_amount < 2000 && status === "Pending") {
+      status = "Approved";
+    }
+    return {
+      billId: u.bill_id,
+      storeId: u.store_id,
+      utilityType: mapUtilityType(u.utility_type),
+      providerName: u.provider_name,
+      billMonth: u.bill_month,
+      billAmount: u.bill_amount,
+      consumerNumber: u.consumer_number ?? null,
+      dueDate: toDateRequired(u.due_date),
+      paymentDate: toDate(u.payment_date),
+      paymentMode: mapPaymentMode(u.payment_mode),
+      transactionId: u.transaction_id ?? null,
+      status: status,
+      meterReading: u.meter_reading ?? null,
+      unitsConsumed: u.units_consumed ?? null,
+      tallyLedger: u.tally_ledger,
+      tallyCostCenter: u.tally_cost_center,
+    };
+  });
 
   for (let i = 0; i < rows.length; i += 100) {
     await prisma.utilityBill.createMany({
@@ -285,27 +291,33 @@ async function seedUtilityBills() {
 
 async function seedPettyCash() {
   console.log("💵 Seeding petty cash requests...");
-  const rows = raw.petty_cash_requests.map((p: any) => ({
-    requestId: p.request_id,
-    storeId: p.store_id,
-    requestedBy: p.requested_by,
-    requestDate: toDateRequired(p.request_date),
-    amount: p.amount,
-    category: p.category,
-    description: p.description,
-    vendorName: p.vendor_name ?? null,
-    billNumber: p.bill_number ?? null,
-    status: mapPettyCashStatus(p.status),
-    approvedBy: p.approved_by ?? null,
-    approvalDate: toDate(p.approval_date),
-    paymentMode: mapPaymentMode(p.payment_mode),
-    tallyVoucherType: p.tally_voucher_type ?? null,
-    tallyLedger: p.tally_ledger ?? null,
-    tallyCostCenter: p.tally_cost_center ?? null,
-    remarks: p.remarks ?? null,
-    paymentDate: toDate(p.payment_date),
-    transactionId: p.transaction_id ?? null,
-  }));
+  const rows = raw.petty_cash_requests.map((p: any) => {
+    let status = mapPettyCashStatus(p.status);
+    if (p.amount < 2000 && status === "Pending") {
+      status = "Auto_Approved";
+    }
+    return {
+      requestId: p.request_id,
+      storeId: p.store_id,
+      requestedBy: p.requested_by,
+      requestDate: toDateRequired(p.request_date),
+      amount: p.amount,
+      category: p.category,
+      description: p.description,
+      vendorName: p.vendor_name ?? null,
+      billNumber: p.bill_number ?? null,
+      status: status,
+      approvedBy: p.approved_by ?? null,
+      approvalDate: toDate(p.approval_date),
+      paymentMode: mapPaymentMode(p.payment_mode),
+      tallyVoucherType: p.tally_voucher_type ?? null,
+      tallyLedger: p.tally_ledger ?? null,
+      tallyCostCenter: p.tally_cost_center ?? null,
+      remarks: p.remarks ?? null,
+      paymentDate: toDate(p.payment_date),
+      transactionId: p.transaction_id ?? null,
+    };
+  });
 
   for (let i = 0; i < rows.length; i += 100) {
     await prisma.pettyCashRequest.createMany({

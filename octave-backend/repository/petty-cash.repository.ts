@@ -16,7 +16,13 @@ export class PettyCashRepository implements IPettyCashRepository {
 
     const where: any = {};
     if (filters?.storeId) where.storeId = filters.storeId;
-    if (filters?.status && filters.status !== "All") where.status = filters.status;
+    if (filters?.status && filters.status !== "All") {
+      if (filters.status === "Pending" || filters.status === "Pending_CFO") {
+        where.status = { in: ["Pending", "Pending_CFO"] };
+      } else {
+        where.status = filters.status;
+      }
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.pettyCashRequest.findMany({

@@ -134,10 +134,15 @@ export default function ApprovalCenter() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedItems.size === filtered.length && filtered.length > 0) {
-      setSelectedItems(new Set());
+    const allSelected = filtered.length > 0 && filtered.every((i: any) => selectedItems.has(`${i.sourceType}-${i.id}`));
+    if (allSelected) {
+      const newSelected = new Set(selectedItems);
+      filtered.forEach((i: any) => newSelected.delete(`${i.sourceType}-${i.id}`));
+      setSelectedItems(newSelected);
     } else {
-      setSelectedItems(new Set(filtered.map((i: any) => `${i.sourceType}-${i.id}`)));
+      const newSelected = new Set(selectedItems);
+      filtered.forEach((i: any) => newSelected.add(`${i.sourceType}-${i.id}`));
+      setSelectedItems(newSelected);
     }
   };
 
@@ -364,9 +369,9 @@ export default function ApprovalCenter() {
                       <TableRow>
                         <TableHead className="w-12">
                           <Checkbox
-                            checked={selectedItems.size === filtered.length && filtered.length > 0}
+                            checked={filtered.length > 0 && filtered.every((i: any) => selectedItems.has(`${i.sourceType}-${i.id}`))}
                             onCheckedChange={toggleSelectAll}
-                            aria-label="Select all"
+                            aria-label="Select all on this page"
                           />
                         </TableHead>
                         <TableHead className="w-24">Type</TableHead>
@@ -473,7 +478,7 @@ export default function ApprovalCenter() {
                 </div>
               )}
             </AnimatePresence>
-            {!isLoading && !isError && response?.meta && (
+            {!isLoading && !isError && response?.meta && response.meta.totalPages > 1 && (
               <div className="p-4 border-t">
                 <DynamicPagination 
                   currentPage={response.meta.currentPage} 

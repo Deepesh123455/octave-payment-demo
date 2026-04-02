@@ -38,7 +38,14 @@ export class RentService implements IRentService {
 
     // Calculate total net payable in Paise (Razorpay expects smallest currency unit)
     const totalAmount = payments.reduce((sum, p) => sum + p.netPayable, 0);
-    const amountInPaise = totalAmount * 100;
+    let amountInPaise = totalAmount * 100;
+
+    // DEMO MODE: If using Razorpay Test Key, cap the amount at ₹1.00 (100 paise) 
+    // to avoid "Amount exceeds maximum amount allowed" error for high-value rent payments.
+    if (process.env.Test_Key_ID?.startsWith('rzp_test_') && amountInPaise > 1000000) {
+      console.log(`[Demo Mode] Capping rent payment of ₹${totalAmount} to ₹1.00 for Razorpay Test Order.`);
+      amountInPaise = 100; // ₹1.00
+    }
 
     const options = {
       amount: amountInPaise,

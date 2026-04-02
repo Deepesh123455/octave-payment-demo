@@ -57,7 +57,14 @@ export class ApprovalService implements IApprovalService {
     utilities.forEach(u => totalAmount += Number(u.billAmount));
     pettyCash.forEach(p => totalAmount += Number(p.amount));
 
-    const amountInPaise = Math.round(totalAmount * 100);
+    let amountInPaise = Math.round(totalAmount * 100);
+    
+    // DEMO MODE: If using Razorpay Test Key, cap the amount at ₹1.00 (100 paise) 
+    // to avoid "Amount exceeds maximum amount allowed" error for high-value rent payments.
+    if (process.env.Test_Key_ID?.startsWith('rzp_test_') && amountInPaise > 100000000) {
+      console.log(`[Demo Mode] Capping payment amount of ₹${totalAmount} to ₹1.00 for Razorpay Test Order.`);
+      amountInPaise = 100; // ₹1.00
+    }
 
     const options = {
       amount: amountInPaise,

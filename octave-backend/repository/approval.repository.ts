@@ -14,7 +14,7 @@ export class ApprovalRepository implements IApprovalRepository {
 
     const dataRaw: any[] = await this.prisma.$queryRaw`
       SELECT * FROM (
-        SELECT rp.id, rp."paymentId" as "entityId", rp."storeId", COALESCE(rp."totalPaid", rp.amount) as amount, rp."dueDate", rp.status::text as status, 'RENT' as "sourceType", s."storeName", l."companyName" as "ownerName", rp."paymentMonth" || ' rent payment' as description, rp."updatedAt"
+        SELECT rp.id, rp."paymentId" as "entityId", rp."storeId", COALESCE(NULLIF(rp."netPayable", 0), NULLIF(rp.amount, 0), s."monthlyRent", 0)::numeric as amount, rp."dueDate", rp.status::text as status, 'RENT' as "sourceType", s."storeName", l."companyName" as "ownerName", rp."paymentMonth" || ' rent payment' as description, rp."updatedAt"
         FROM rent_payments rp
         LEFT JOIN stores s ON rp."storeId" = s."storeId"
         LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"

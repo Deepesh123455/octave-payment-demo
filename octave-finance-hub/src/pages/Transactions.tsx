@@ -1,31 +1,39 @@
 import { useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2, AlertCircle, History, Building2, Zap, Receipt, Download } from "lucide-react";
+import { Search, Loader2, AlertCircle, History, Building2, Zap, Receipt, Download, FilterX } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
 import { useQuery } from "@tanstack/react-query";
 import { useTransactions } from "@/hooks/apis/useTransactionQueries";
 import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useStores } from "@/hooks/apis/useStoreQueries";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function TransactionsPage() {
   const [page, setPage] = useState(1);
-  const { data: response, isLoading, isError, error } = useTransactions(page, 20);
+  const [storeId, setStoreId] = useState<string>("all");
+  const [sourceType, setSourceType] = useState<string>("all");
+  const { data: response, isLoading, isError, error } = useTransactions(
+    page, 
+    20, 
+    storeId === "all" ? undefined : storeId, 
+    sourceType === "all" ? undefined : sourceType
+  );
+  const { data: storesResponse } = useStores();
   const [search, setSearch] = useState("");
   const { mutate: markRead } = useMarkRead();
 
   useEffect(() => {
     markRead({ type: "TRANSACTION" });
   }, []);
-
-
 
   const transactions = response?.data || [];
 
@@ -38,6 +46,13 @@ export default function TransactionsPage() {
       t.description.toLowerCase().includes(search.toLowerCase())
     );
   }, [transactions, search]);
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStoreId("all");
+    setSourceType("all");
+    setPage(1);
+  };
 
   const handleExportCSV = () => {
     if (filtered.length === 0) {
@@ -91,14 +106,48 @@ export default function TransactionsPage() {
 
         <Card>
           <CardHeader className="pb-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search transactions, store, ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search transactions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={storeId} onValueChange={(val) => { setStoreId(val); setPage(1); }}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Stores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stores</SelectItem>
+                    {storesResponse?.data?.map((s: any) => (
+                      <SelectItem key={s.storeId} value={s.storeId}>{s.storeName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sourceType} onValueChange={(val) => { setSourceType(val); setPage(1); }}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="RENT">Rent</SelectItem>
+                    <SelectItem value="UTILITY">Utility</SelectItem>
+                    <SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(search || storeId !== "all" || sourceType !== "all") && (
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters} className="text-muted-foreground">
+                    <FilterX className="h-4 w-4 mr-2" /> Clear
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -181,8 +230,8 @@ export default function TransactionsPage() {
                 </Table>
               </div>
             )}
-            {!isLoading && !isError && response?.meta && (
-              <div className="pt-4 mt-6 border-t border-border/50">
+            {response?.meta && response.meta.totalPages > 1 && (
+              <div className="pt-4 mt-6 border-t border-border/50 px-4">
                 <DynamicPagination 
                   currentPage={response.meta.currentPage} 
                   totalPages={response.meta.totalPages} 

@@ -13,7 +13,19 @@ export interface Transaction {
   description: string;
 }
 
-export const getTransactions = async (page: number = 1, limit: number = 50): Promise<{ data: Transaction[]; meta?: any }> => {
-  const response = await api.get(`/transactions?page=${page}&limit=${limit}`);
+export const getTransactions = async (
+  page: number = 1, 
+  limit: number = 50, 
+  storeId?: string, 
+  sourceType?: string
+): Promise<{ data: Transaction[]; meta?: any }> => {
+  const params = new URLSearchParams({ 
+    page: page.toString(), 
+    limit: limit.toString() 
+  });
+  if (storeId) params.append("storeId", storeId);
+  if (sourceType) params.append("sourceType", sourceType);
+  
+  const response = await api.get(`/transactions?${params.toString()}`);
   return response.data;
 };

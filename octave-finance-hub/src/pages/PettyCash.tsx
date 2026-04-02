@@ -236,7 +236,7 @@ export default function PettyCash() {
             <div className="overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
               <TabsList className="bg-secondary/50 p-1 inline-flex w-max">
                 <TabsTrigger value="All" className="px-5">All</TabsTrigger>
-                <TabsTrigger value="Pending_CFO" className="px-5">Pending CFO</TabsTrigger>
+                <TabsTrigger value="Pending" className="px-5">Pending</TabsTrigger>
                 <TabsTrigger value="Escalated" className="px-5 text-destructive data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">Escalated</TabsTrigger>
                 <TabsTrigger value="Auto_Approved" className="px-5">Auto Approved</TabsTrigger>
                 <TabsTrigger value="Approved" className="px-5">Approved</TabsTrigger>
@@ -269,11 +269,9 @@ export default function PettyCash() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10 text-center">
-                          {isAdmin && (
+                          {isAdmin && filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).length > 0 && (
                             <Checkbox 
-                              checked={filteredRecords.length > 0 && 
-                              filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).length > 0 && 
-                              filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).every((r: any) => selected.includes(r.id))}
+                              checked={filteredRecords.filter((r: any) => !["Approved", "Paid", "Auto_Approved"].includes(r.status)).every((r: any) => selected.includes(r.id))}
                               onCheckedChange={toggleAllInTab}
                             />
                           )}
@@ -361,7 +359,7 @@ export default function PettyCash() {
                   </Table>
                 </div>
               )}
-              {!isLoading && !isError && pettyResponse?.meta && (
+              {!isLoading && !isError && pettyResponse?.meta && pettyResponse.meta.totalPages > 1 && (
                 <div className="p-4 border-t">
                   <DynamicPagination 
                     currentPage={pettyResponse.meta.currentPage} 

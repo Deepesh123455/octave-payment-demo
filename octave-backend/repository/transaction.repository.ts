@@ -21,7 +21,7 @@ export class TransactionRepository {
     this.prisma = prisma;
   }
 
-  async getAllTransactions(page: number = 1, limit: number = 20): Promise<{ data: TransactionItem[]; meta: any }> {
+  async getAllTransactions(page: number = 1, limit: number = 20, storeId?: string, sourceType?: string): Promise<{ data: TransactionItem[]; meta: any }> {
     const skip = (page - 1) * limit;
 
     const dataRaw: any[] = await this.prisma.$queryRaw`
@@ -31,6 +31,7 @@ export class TransactionRepository {
         LEFT JOIN stores s ON rp."storeId" = s."storeId"
         LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"
         WHERE rp.status = 'Paid'
+          AND (${storeId || null}::text IS NULL OR rp."storeId" = ${storeId})
         
         UNION ALL
         
@@ -38,6 +39,7 @@ export class TransactionRepository {
         FROM utility_bills ub
         LEFT JOIN stores s ON ub."storeId" = s."storeId"
         WHERE ub.status = 'Paid'
+          AND (${storeId || null}::text IS NULL OR ub."storeId" = ${storeId})
 
         UNION ALL
 
@@ -45,18 +47,30 @@ export class TransactionRepository {
         FROM petty_cash_requests pcr
         LEFT JOIN stores s ON pcr."storeId" = s."storeId"
         WHERE pcr.status = 'Paid'
+          AND (${storeId || null}::text IS NULL OR pcr."storeId" = ${storeId})
       ) as combined
+      WHERE (${sourceType || null}::text IS NULL OR combined."sourceType" = ${sourceType})
       ORDER BY combined.date DESC
       LIMIT ${limit} OFFSET ${skip}
     `;
 
     const countRaw: any[] = await this.prisma.$queryRaw`
       SELECT SUM(count) as total FROM (
-        SELECT COUNT(*) as count FROM rent_payments WHERE status = 'Paid'
+        SELECT COUNT(*) as count FROM rent_payments 
+        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+          AND (${sourceType || null}::text IS NULL OR 'RENT' = ${sourceType})
+        
         UNION ALL
-        SELECT COUNT(*) as count FROM utility_bills WHERE status = 'Paid'
+        
+        SELECT COUNT(*) as count FROM utility_bills 
+        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+          AND (${sourceType || null}::text IS NULL OR 'UTILITY' = ${sourceType})
+        
         UNION ALL
-        SELECT COUNT(*) as count FROM petty_cash_requests WHERE status = 'Paid'
+        
+        SELECT COUNT(*) as count FROM petty_cash_requests 
+        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+          AND (${sourceType || null}::text IS NULL OR 'PETTY_CASH' = ${sourceType})
       ) as count_combined
     `;
     const total = Number(countRaw[0]?.total || 0);

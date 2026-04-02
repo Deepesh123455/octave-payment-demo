@@ -204,13 +204,12 @@ export default function RentPayments() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10 text-center">
-                          <Checkbox 
-                            checked={filteredRecords.length > 0 && 
-                              filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).length > 0 && 
-                              filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).every(r => selected.includes(r.id))}
-                            onCheckedChange={toggleAllInTab}
-                          />
-
+                          {filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).length > 0 && (
+                            <Checkbox 
+                              checked={filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).every(r => selected.includes(r.id))}
+                              onCheckedChange={toggleAllInTab}
+                            />
+                          )}
                         </TableHead>
                         <TableHead>Store</TableHead>
                         <TableHead>Landlord</TableHead>
@@ -300,7 +299,7 @@ export default function RentPayments() {
                   </Table>
                 </div>
               )}
-              {!isLoading && !isError && rentResponse?.meta && (
+              {!isLoading && !isError && rentResponse?.meta && rentResponse.meta.totalPages > 1 && (
                 <div className="p-4 border-t">
                   <DynamicPagination 
                     currentPage={rentResponse.meta.currentPage} 
