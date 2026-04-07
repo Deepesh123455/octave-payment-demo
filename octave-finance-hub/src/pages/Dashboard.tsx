@@ -318,9 +318,20 @@ export default function Dashboard() {
     .slice(0, 5);
 
   const expenseTrendData = useMemo(() => {
-    const now = new Date();
+    const latestTransactionDate =
+      allTransactions.length > 0
+        ? allTransactions.reduce((latest: Date, transaction: any) => {
+            const current = new Date(transaction.date);
+            return current.getTime() > latest.getTime() ? current : latest;
+          }, new Date(allTransactions[0].date))
+        : new Date();
+
     const months = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      const date = new Date(
+        latestTransactionDate.getFullYear(),
+        latestTransactionDate.getMonth() - (5 - index),
+        1
+      );
       return {
         key: `${date.getFullYear()}-${date.getMonth()}`,
         month: date.toLocaleDateString("en-IN", { month: "short" }),

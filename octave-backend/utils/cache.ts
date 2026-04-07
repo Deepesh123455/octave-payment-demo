@@ -1,6 +1,7 @@
 import redisClient from "../config/redis";
 
 const DEFAULT_TTL = 600; // 10 minutes in seconds
+const CACHE_SCHEMA_VERSION = "2026-04-07-reset-fix-v1";
 
 export class CacheService {
   /**
@@ -16,7 +17,10 @@ export class CacheService {
       await redisClient.set(versionKey, version);
     }
 
-    const paramsString = JSON.stringify(params);
+    const paramsString = JSON.stringify({
+      cacheSchema: CACHE_SCHEMA_VERSION,
+      ...params,
+    });
     return `C:${module.toUpperCase()}:V${version}:${paramsString}`;
   }
 

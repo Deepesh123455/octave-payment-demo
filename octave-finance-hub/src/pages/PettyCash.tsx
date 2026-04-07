@@ -33,6 +33,8 @@ const specialExpenses = [
 
 const categories = ["Store Supplies", "Repairs", "Marketing", "Maintenance", "Courier", "Staff Welfare", "Utility", "Others"];
 
+const getDisplayStatus = (status?: string) => (status === "Paid" ? "Approved" : status || "Pending");
+
 export default function PettyCash() {
   const { user, isAdmin, isStoreManager } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
@@ -461,7 +463,6 @@ export default function PettyCash() {
                         <TabsTrigger value="Pending" className="px-5">Pending</TabsTrigger>
                         <TabsTrigger value="Auto_Approved" className="px-5">Auto Approved</TabsTrigger>
                         <TabsTrigger value="Approved" className="px-5">Approved</TabsTrigger>
-                        <TabsTrigger value="Paid" className="px-5 text-success data-[state=active]:bg-success data-[state=active]:text-success-foreground">Paid</TabsTrigger>
                         <TabsTrigger value="Rejected" className="px-5 text-destructive data-[state=active]:bg-destructive data-[state=active]:text-destructive-foreground">Rejected</TabsTrigger>
                     </TabsList>
                 </div>
@@ -511,6 +512,9 @@ export default function PettyCash() {
                                     <AnimatePresence mode="popLayout">
                                         {filteredRecords.length > 0 ? (
                                             filteredRecords.map((item: any) => (
+                                                (() => {
+                                                    const displayStatus = getDisplayStatus(item.status);
+                                                    return (
                                                 <motion.tr 
                                                     key={item.id} 
                                                     initial={{ opacity: 0 }} 
@@ -533,8 +537,8 @@ export default function PettyCash() {
                                                     <TableCell className="text-right font-bold whitespace-nowrap font-mono">{formatCurrency(item.amount)}</TableCell>
                                                     <TableCell className="whitespace-nowrap">{new Date(item.requestDate).toLocaleDateString()}</TableCell>
                                                     <TableCell>
-                                                        <Badge className={`text-[10px] whitespace-nowrap ${item.status === "Paid" || item.status === "Approved" || item.status === "Auto_Approved" ? "status-success" : item.status === "Rejected" || item.status === "Escalated" ? "status-overdue" : "status-pending"}`}>
-                                                            {item.status.replace("_", " ")}
+                                                        <Badge className={`text-[10px] whitespace-nowrap ${displayStatus === "Approved" || displayStatus === "Auto_Approved" ? "status-success" : displayStatus === "Rejected" || displayStatus === "Escalated" ? "status-overdue" : "status-pending"}`}>
+                                                            {displayStatus.replace("_", " ")}
                                                         </Badge>
                                                     </TableCell>
                                                     {canManagePettyCashAdmin && (
@@ -562,12 +566,14 @@ export default function PettyCash() {
                                                                 </div>
                                                             ) : (
                                                                 <span className="text-[10px] text-muted-foreground bg-secondary/30 px-2 py-1 rounded-md italic">
-                                                                    {item.status === "Paid" ? "Paid" : item.status === "Approved" || item.status === "Auto_Approved" ? "Approved" : "Rejected"}
+                                                                    {displayStatus === "Approved" || displayStatus === "Auto_Approved" ? "Approved" : "Rejected"}
                                                                 </span>
                                                             )}
                                                         </TableCell>
                                                     )}
                                                 </motion.tr>
+                                                    );
+                                                })()
                                             ))
                                         ) : (
                                             <TableRow>
