@@ -18,6 +18,7 @@ import AIInsights from "./pages/AIInsights";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./pages/ProtectedRoute"; // ✅ Uncommented this!
 import VerifyOtpPage from "./pages/VerifyOtpPage";
+import MobileExpense from "./pages/MobileExpense";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route path="/login" element={<Navigate to="/send-otp" replace />} />
       <Route path="/send-otp" element={<LoginPage />} />
       <Route path="/verify-otp" element={<VerifyOtpPage />} />
+      <Route path="/mobile-expense" element={<MobileExpense />} />
 
       {/* 🔒 PROTECTED ROUTES: Only logged-in users can access these */}
       <Route element={<ProtectedRoute />}>

@@ -5,39 +5,38 @@ const MAX_RETRY_ATTEMPTS = 10;
 
 const isSecure = REDIS_URL.startsWith("rediss://");
 
-const redisClient = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: null,
-  
-  tls: isSecure ? { rejectUnauthorized: false } : undefined,
-  retryStrategy(times: number) {
-    if (times > MAX_RETRY_ATTEMPTS) {
-      console.error(
-        `[Redis] ❌ Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached. Giving up.`,
-      );
-      return null;
-    }
-    const delay = Math.min(times * 100, 3_000);
-    console.warn(`[Redis] 🔄 Retry attempt ${times} in ${delay}ms...`);
-    return delay;
-  },
+export const createRedisClient = (connectionName = "octave-backend") =>
+  new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null,
+    tls: isSecure ? { rejectUnauthorized: false } : undefined,
+    retryStrategy(times: number) {
+      if (times > MAX_RETRY_ATTEMPTS) {
+        console.error(
+          `[Redis] Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached. Giving up.`,
+        );
+        return null;
+      }
 
-  // Allow commands to queue during the initial connection phase
-  enableOfflineQueue: false,
+      const delay = Math.min(times * 100, 3_000);
+      console.warn(`[Redis] Retry attempt ${times} in ${delay}ms...`);
+      return delay;
+    },
+    enableOfflineQueue: false,
+    keepAlive: 10_000,
+    connectionName,
+  });
 
-  // Keep-alive to detect stale connections
-  keepAlive: 10_000,
-  connectionName: "octave-backend",
-});
+const redisClient = createRedisClient();
 
-redisClient.on("connect", () => console.log("[Redis] 🔌 Connecting..."));
-redisClient.on("ready", () => console.log("[Redis] ✅ Connected and ready"));
+redisClient.on("connect", () => console.log("[Redis] Connecting..."));
+redisClient.on("ready", () => console.log("[Redis] Connected and ready"));
 redisClient.on("error", (err: Error) =>
-  console.error("[Redis] ❌ Error:", err.message),
+  console.error("[Redis] Error:", err.message),
 );
-redisClient.on("close", () => console.warn("[Redis] ⚠️  Connection closed"));
+redisClient.on("close", () => console.warn("[Redis] Connection closed"));
 redisClient.on("reconnecting", () =>
-  console.warn("[Redis] 🔄 Reconnecting..."),
+  console.warn("[Redis] Reconnecting..."),
 );
-redisClient.on("end", () => console.warn("[Redis] 🔴 Connection ended"));
+redisClient.on("end", () => console.warn("[Redis] Connection ended"));
 
 export default redisClient;

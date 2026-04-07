@@ -5,16 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Receipt, CheckCircle, Clock, AlertTriangle, Plus, Loader2, Filter, FileCheck, XCircle, AlertCircle, Wallet } from "lucide-react";
+import { Receipt, CheckCircle, AlertTriangle, Plus, Loader2, Filter, FileCheck, XCircle, AlertCircle, Wallet } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { DynamicPagination } from "@/components/ui/DynamicPagination";
-import { formatCurrency, getStatusLabel } from "@/data/sampleData";
+import { formatCurrency } from "@/data/sampleData";
 import { usePettyCashRequests, useCreatePettyCash, useApprovePettyCash, useRejectPettyCash, useProcessDirectPayment } from "@/hooks/apis/usePettyCashQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { useStores } from "@/hooks/apis/useStoreQueries";
@@ -22,16 +22,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { VirtualCard } from "@/components/VirtualCard";
 import { PaymentModal } from "@/components/PaymentModal";
-
-const specialExpenses = [
-  { id: "staff_cleaning", title: "Staff Cleaning", category: "Maintenance", description: "Regular store and staff area cleaning", amount: 1500, icon: <Receipt className="h-6 w-6" /> },
-  { id: "repairs", title: "Repairs", category: "Repairs", description: "Minor equipment or furniture repairs", amount: 2500, icon: <AlertTriangle className="h-6 w-6" /> },
-  { id: "maintenance", title: "Maintenance", category: "Maintenance", description: "General store maintenance services", amount: 2000, icon: <FileCheck className="h-6 w-6" /> },
-  { id: "stationery", title: "Stationery", category: "Store Supplies", description: "Office supplies, paper, and pens", amount: 1200, icon: <Plus className="h-6 w-6" /> },
-  { id: "tea_water", title: "Tea & Water", category: "Staff Welfare", description: "Drinking water and refreshments for staff", amount: 800, icon: <Wallet className="h-6 w-6" /> },
-];
+import { QuickExpenseManagerPanel } from "@/components/QuickExpenseManagerPanel";
 
 const categories = ["Store Supplies", "Repairs", "Marketing", "Maintenance", "Courier", "Staff Welfare", "Utility", "Others"];
+const specialExpenses: any[] = [];
+
+type PendingExpense = {
+  id: string;
+  storeId: string;
+  category: string;
+  amount: number;
+  description: string;
+  status: string;
+  createdAt: string;
+};
 
 const getDisplayStatus = (status?: string) => (status === "Paid" ? "Approved" : status || "Pending");
 
@@ -39,15 +43,16 @@ export default function PettyCash() {
   const { user, isAdmin, isStoreManager } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("All");
-  const [managerTab, setManagerTab] = useState("view_expenses");
+  const [managerTab, setManagerTab] = useState("petty_management");
   const [page, setPage] = useState(1);
   const { mutate: markRead } = useMarkRead();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [selectedExpense, setSelectedExpense] = useState<PendingExpense | null>(null);
 
   useEffect(() => {
     markRead({ type: "PETTY_CASH" });
   }, []);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newRequest, setNewRequest] = useState({
     storeId: "",
@@ -177,7 +182,7 @@ export default function PettyCash() {
     }
   };
 
-  const openPaymentModal = (expense: any) => {
+  const openPaymentModal = (expense: PendingExpense) => {
     if (!currentStore) {
         toast.error("Store information not found");
         return;
@@ -212,7 +217,7 @@ export default function PettyCash() {
         onClose={() => setIsPaymentModalOpen(false)}
         onConfirmPay={handleConfirmPay}
         amount={selectedExpense?.amount || 0}
-        description={selectedExpense?.title || ""}
+        description={selectedExpense?.description || selectedExpense?.category || ""}
         storeName={currentStore?.storeName || "Octave Store"}
       />
 
@@ -359,7 +364,12 @@ export default function PettyCash() {
         </div>
 
         {isStoreManager && managerTab === "petty_management" ? (
-             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pb-12">
+             <>
+                <QuickExpenseManagerPanel
+                    currentStore={currentStore}
+                    managerDisplayName={managerDisplayName}
+                    processPayment={processPayment}
+                />
                 <div className="lg:col-span-5 flex flex-col gap-8">
                     <div className="flex flex-col gap-6">
                         <div className="flex justify-between items-end px-1">
@@ -453,7 +463,7 @@ export default function PettyCash() {
                         ))}
                     </div>
                 </div>
-             </div>
+             </>
         ) : (
             <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setPage(1); setSelected([]); }} className="w-full">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">

@@ -22,6 +22,7 @@ import approvalRoutes from "./routes/approval.routes";
 import pettyCashRoutes from "./routes/petty-cash.routes";
 import transactionRoutes from "./routes/transaction.routes";
 import notificationRoutes from "./routes/notification.routes";
+import quickExpenseRoutes from "./routes/quick-expense.routes";
 import { ApiError } from "./utils/AppError";
 import { globalErrorHandler } from "./middleware/errormiddleware";
 
@@ -90,6 +91,7 @@ app.use("/api/v1/approval", approvalRoutes);
 app.use("/api/v1/petty-cash", pettyCashRoutes);
 app.use("/api/v1/transactions", transactionRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use(quickExpenseRoutes);
 
 // ── 5. 404 Handler ────────────────────────────────────────────────────────
 app.use("*", (req: Request, res: Response, next: NextFunction) => {
