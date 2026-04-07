@@ -37,10 +37,13 @@ const navItems = [
   // { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
 ];
 
+import { useAuth } from "@/contexts/AuthContext";
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user, isAdmin, isStoreManager } = useAuth();
   const { data: countResponse } = useNotificationCounts();
   
   const counts = countResponse?.data || [];
@@ -48,15 +51,14 @@ export function AppSidebar() {
 
   const sidebarNavItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    { title: "Store Management", url: "/stores", icon: Store },
-    { title: "Rent Payments", url: "/rent", icon: Home, count: getCount("RENT_DUE") },
-    { title: "Utility Bills", url: "/utilities", icon: Zap, count: getCount("UTILITY_DUE") },
+    { title: "Store Management", url: "/stores", icon: Store, hide: !isAdmin },
+    { title: "Rent Payments", url: "/rent", icon: Home, count: getCount("RENT_DUE"), hide: !isAdmin },
+    { title: "Utility Bills", url: "/utilities", icon: Zap, count: getCount("UTILITY_DUE"), hide: !isAdmin },
     { title: "Petty Cash", url: "/petty-cash", icon: Wallet, count: getCount("PETTY_CASH") },
-    { title: "Approval Center", url: "/approvals", icon: CheckCircle, count: getCount("APPROVAL") },
+    { title: "Approval Center", url: "/approvals", icon: CheckCircle, count: getCount("APPROVAL"), hide: !isAdmin },
     { title: "Transactions", url: "/transactions", icon: HistoryIcon, count: getCount("TRANSACTION") },
-    { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-    // { title: "AI Insights", url: "/ai-insights", icon: Sparkles },
-  ];
+    { title: "Reports & Analytics", url: "/reports", icon: BarChart3, hide: !isAdmin },
+  ].filter(item => !item.hide);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -91,6 +93,7 @@ export function AppSidebar() {
                         to={item.url}
                         end={item.url === "/"}
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                        onClick={(item as any).onNavigate}
                       >
                         <div className="relative flex items-center gap-3 w-full">
                           <item.icon className="h-4 w-4 shrink-0" />

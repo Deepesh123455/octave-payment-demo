@@ -12,6 +12,7 @@ import { formatCurrency } from "@/data/sampleData";
 import { useUtilityBills, useApproveUtilities, useRejectUtilities } from "@/hooks/apis/useUtilityQueries";
 import { useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const typeIcons: Record<string, React.ElementType> = {
   Electricity: Zap,
@@ -34,7 +35,9 @@ export default function UtilityBills() {
   const [activeTab, setActiveTab] = useState("All");
   const [page, setPage] = useState(1);
   const { mutate: markRead } = useMarkRead();
-
+  const {user} = useAuth();
+ const isPrivileged =
+    user?.role === "SUPER_ADMIN" || user?.role === "FINANCE_ADMIN";
   useEffect(() => {
     markRead({ type: "UTILITY_DUE" });
   }, []);
@@ -61,6 +64,7 @@ export default function UtilityBills() {
   }, [filteredBills]);
 
   const toggleSelect = (id: string) => {
+    if (!isPrivileged) return;
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
@@ -109,7 +113,8 @@ export default function UtilityBills() {
             <p className="text-muted-foreground text-sm mt-1">Electricity, internet, water, CAM & DG charges</p>
           </div>
           <div className="flex gap-2">
-            <Button 
+            {
+              isPrivileged && <Button 
               variant="outline"
               className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               disabled={!isBulkApproveEnabled}
@@ -117,13 +122,17 @@ export default function UtilityBills() {
             >
               <XCircle className="h-4 w-4 mr-2" /> Reject Selected {selected.length > 0 && `(${selected.length})`}
             </Button>
-            <Button 
+            }
+            {
+              isPrivileged && <Button 
               disabled={!isBulkApproveEnabled}
               onClick={() => handleApprove(selected)}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <CheckCircle className="h-4 w-4 mr-2" /> Approve Selected {selected.length > 0 && `(${selected.length})`}
             </Button>
+            }
+            
           </div>
         </div>
 
@@ -164,7 +173,7 @@ export default function UtilityBills() {
                       <CardHeader className="pb-3 border-b bg-secondary/10">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            {bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).length > 0 && (
+                            {isPrivileged && bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).length > 0 && (
                               <Checkbox 
                                 checked={bills.filter((b: any) => !["Approved", "Paid"].includes(b.status)).every((b: any) => selected.includes(b.id))}
                                 onCheckedChange={(checked) => {
@@ -192,7 +201,7 @@ export default function UtilityBills() {
                             
                             return (
                               <div key={bill.id} className={`relative rounded-xl border p-4 space-y-3 transition-all ${selected.includes(bill.id) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/30"}`}>
-                                {canApprove && (
+                                {isPrivileged && canApprove && (
                                   <div className="absolute top-3 right-3">
                                     <Checkbox 
                                       checked={selected.includes(bill.id)} 
@@ -218,9 +227,10 @@ export default function UtilityBills() {
                                     </Badge>
                                   </div>
                                 </div>
-                                {canApprove ? (
+                                {canApprove && isPrivileged ? (
                                   <div className="flex gap-1 mt-2">
-                                    <Button 
+                                    {
+                                      isPrivileged && <Button 
                                       size="sm" 
                                       variant="secondary" 
                                       className="flex-1 h-8 text-[11px] font-bold"
@@ -228,7 +238,9 @@ export default function UtilityBills() {
                                     >
                                       <FileCheck className="h-3.5 w-3.5 mr-1.5" /> Approve
                                     </Button>
-                                    {bill.status !== "Rejected" && (
+                                    }
+                                    
+                                    {bill.status !== "Rejected" && isPrivileged && (
                                       <Button 
                                         size="sm" 
                                         variant="outline" 

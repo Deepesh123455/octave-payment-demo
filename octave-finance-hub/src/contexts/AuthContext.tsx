@@ -14,6 +14,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return storedAdmin ? JSON.parse(storedAdmin) : null;
   });
 
+  // Local-only transaction notification counter (resets on Transactions page visit)
+  const [txnNotifCount, setTxnNotifCount] = useState<number>(() => {
+    const stored = localStorage.getItem("octave_txn_notif");
+    return stored ? parseInt(stored, 10) : 0;
+  });
+
+  const incrementTxnNotif = () => {
+    setTxnNotifCount(prev => {
+      const next = prev + 1;
+      localStorage.setItem("octave_txn_notif", String(next));
+      return next;
+    });
+  };
+
+  const clearTxnNotif = () => {
+    setTxnNotifCount(0);
+    localStorage.removeItem("octave_txn_notif");
+  };
+
   const login = (token: string, admin: any) => {
     localStorage.setItem("octave_token", token);
     localStorage.setItem("octave_admin", JSON.stringify(admin));
@@ -27,11 +46,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = "/send-otp";
   };
 
-  const isAdmin = user?.role === "FINANCE_ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === "FINANCE_ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "EXPENSE_VIEWER";
+  const isStoreManager = user?.role === "STORE_MANAGER";
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, isAdmin, isStoreManager, txnNotifCount, incrementTxnNotif, clearTxnNotif }}>
       {children}
     </AuthContext.Provider>
   );
-};
+};

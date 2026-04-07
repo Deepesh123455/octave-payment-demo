@@ -20,6 +20,8 @@ export interface Store {
   leaseStartDate: string;
   leaseEndDate: string;
   pettyCashLimit: number;
+  pettyCashBalance: number;
+  virtualCardNumber: string;
   openingDate: string;
   storeStatus: "Active" | "Inactive" | "Under_Renovation";
   squareFeet: number;
@@ -38,4 +40,9 @@ export const fetchAllStores = async () => {
 export const fetchStoreById = async (id: string) => {
   const response = await api.get(`stores/${id}`);
   return response.data; // Backend returns { status, data }
+};
+
+export const updateStorePettyCashBalance = async (id: string, amount: number) => {
+  const response = await api.patch(`stores/${id}/petty-cash-balance`, { amount });
+  return response.data;
 };

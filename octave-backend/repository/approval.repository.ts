@@ -27,12 +27,6 @@ export class ApprovalRepository implements IApprovalRepository {
         LEFT JOIN stores s ON ub."storeId" = s."storeId"
         WHERE ub.status = 'Approved'
 
-        UNION ALL
-
-        SELECT pcr.id, pcr."requestId" as "entityId", pcr."storeId", pcr.amount, pcr."requestDate" as "dueDate", pcr.status::text as status, 'PETTY_CASH' as "sourceType", s."storeName", pcr."vendorName" as "ownerName", pcr.description, pcr."updatedAt"
-        FROM petty_cash_requests pcr
-        LEFT JOIN stores s ON pcr."storeId" = s."storeId"
-        WHERE pcr.status = 'Approved' OR pcr.status = 'Auto_Approved'
       ) as combined
       WHERE (${storeId || null}::text IS NULL OR combined."storeId" = ${storeId})
         AND (${sourceType || null}::text IS NULL OR combined."sourceType" = ${sourceType})
@@ -50,8 +44,6 @@ export class ApprovalRepository implements IApprovalRepository {
         SELECT rp."storeId", 'RENT' as "sourceType" FROM rent_payments rp WHERE rp.status = 'Approved'
         UNION ALL
         SELECT ub."storeId", 'UTILITY' as "sourceType" FROM utility_bills ub WHERE ub.status = 'Approved'
-        UNION ALL
-        SELECT pcr."storeId", 'PETTY_CASH' as "sourceType" FROM petty_cash_requests pcr WHERE pcr.status = 'Approved' OR pcr.status = 'Auto_Approved'
       ) as combined
       WHERE (${storeId || null}::text IS NULL OR combined."storeId" = ${storeId})
     `;

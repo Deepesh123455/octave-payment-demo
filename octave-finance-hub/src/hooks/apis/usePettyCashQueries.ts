@@ -3,7 +3,8 @@ import {
   fetchPettyCashRequests,
   createPettyCashRequest,
   approvePettyCashRequests,
-  rejectPettyCashRequests
+  rejectPettyCashRequests,
+  processDirectPayment
 } from "@/api/api.petty-cash";
 
 export const usePettyCashRequests = (filters?: { storeId?: string; status?: string; page?: number; limit?: number }) => {
@@ -33,6 +34,7 @@ export const useApprovePettyCash = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
       queryClient.invalidateQueries({ queryKey: ["approvedItems"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
@@ -46,8 +48,23 @@ export const useRejectPettyCash = () => {
       rejectPettyCashRequests(ids, rejectedBy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+};
+
+export const useProcessDirectPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: processDirectPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pettyCash"] });
+      queryClient.invalidateQueries({ queryKey: ["stores"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
     },
   });
 };

@@ -13,5 +13,6 @@ const storeController = new StoreController(storeService);
 // Routes
 router.get("/", storeController.getAllStores);
 router.get("/:id", storeController.getStoreById);
+router.patch("/:id/petty-cash-balance", storeController.updatePettyCashBalance);
 
 export default router;

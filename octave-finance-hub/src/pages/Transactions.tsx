@@ -16,15 +16,39 @@ import { useStores } from "@/hooks/apis/useStoreQueries";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TransactionsPage() {
+  const { user, isStoreManager, clearTxnNotif } = useAuth();
   const [page, setPage] = useState(1);
-  const [storeId, setStoreId] = useState<string>("all");
   const [sourceType, setSourceType] = useState<string>("all");
+  
+  // Use a fallback storeId for the demo or when it's missing from user object
+  const effectiveStoreId = useMemo(() => {
+    if (!isStoreManager) return "all";
+    return user?.storeId || "STO001"; // Fallback to STO001 for demo resilience
+  }, [isStoreManager, user]);
+
+  const [storeId, setStoreId] = useState<string>(effectiveStoreId);
+
+  // Sync state if user loads late
+  useEffect(() => {
+    if (isStoreManager && user?.storeId) {
+      setStoreId(user.storeId);
+    }
+  }, [user, isStoreManager]);
+
+  // Clear the transaction notification counter when this page is visited
+  useEffect(() => {
+    if (isStoreManager) {
+      clearTxnNotif();
+    }
+  }, []);
+
   const { data: response, isLoading, isError, error } = useTransactions(
     page, 
     20, 
-    storeId === "all" ? undefined : storeId, 
+    storeId, 
     sourceType === "all" ? undefined : sourceType
   );
   const { data: storesResponse } = useStores();
@@ -49,7 +73,7 @@ export default function TransactionsPage() {
 
   const handleClearFilters = () => {
     setSearch("");
-    setStoreId("all");
+    if (!isStoreManager) setStoreId("all");
     setSourceType("all");
     setPage(1);
   };
@@ -118,17 +142,19 @@ export default function TransactionsPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Select value={storeId} onValueChange={(val) => { setStoreId(val); setPage(1); }}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Stores" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Stores</SelectItem>
-                    {storesResponse?.data?.map((s: any) => (
-                      <SelectItem key={s.storeId} value={s.storeId}>{s.storeName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!isStoreManager && (
+                  <Select value={storeId} onValueChange={(val) => { setStoreId(val); setPage(1); }}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Stores" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stores</SelectItem>
+                      {storesResponse?.data?.map((s: any) => (
+                        <SelectItem key={s.storeId} value={s.storeId}>{s.storeName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 <Select value={sourceType} onValueChange={(val) => { setSourceType(val); setPage(1); }}>
                   <SelectTrigger className="w-[150px]">

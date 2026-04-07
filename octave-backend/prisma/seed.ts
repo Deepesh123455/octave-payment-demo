@@ -143,31 +143,36 @@ async function seedLandlords() {
 
 async function seedStores() {
   console.log("🏪 Seeding stores...");
-  const rows = raw.stores.map((s: any) => ({
-    storeId: s.store_id,
-    storeName: s.store_name,
-    city: s.city,
-    state: s.state,
-    region: s.region,
-    mallOrMarket: s.mall_or_market,
-    type: mapStoreType(s.type),
-    managerName: s.store_manager_name,
-    managerEmail: s.manager_email,
-    managerPhone: s.manager_phone,
-    zoneManager: s.zone_manager,
-    landlordId: s.landlord_id,
-    monthlyRent: s.monthly_rent,
-    rentDueDay: s.rent_due_day,
-    securityDeposit: s.security_deposit,
-    leaseStartDate: toDateRequired(s.lease_start_date),
-    leaseEndDate: toDateRequired(s.lease_end_date),
-    pettyCashLimit: s.petty_cash_limit,
-    openingDate: toDateRequired(s.opening_date),
-    storeStatus: mapStoreStatus(s.store_status),
-    squareFeet: s.square_feet,
-    bankAccountLast4: s.bank_account_last4,
-    tallyCostCenter: s.tally_cost_center,
-  }));
+  const rows = raw.stores.map((s: any) => {
+    const isMumbaiDemo = s.store_id === "STO001";
+    return {
+      storeId: s.store_id,
+      storeName: s.store_name,
+      city: s.city,
+      state: s.state,
+      region: s.region,
+      mallOrMarket: s.mall_or_market,
+      type: mapStoreType(s.type),
+      managerName: s.store_manager_name,
+      managerEmail: isMumbaiDemo ? "democfo@gmail.com" : s.manager_email,
+      managerPhone: s.manager_phone,
+      zoneManager: s.zone_manager,
+      landlordId: s.landlord_id,
+      monthlyRent: s.monthly_rent,
+      rentDueDay: s.rent_due_day,
+      securityDeposit: s.security_deposit,
+      leaseStartDate: toDateRequired(s.lease_start_date),
+      leaseEndDate: toDateRequired(s.lease_end_date),
+      pettyCashLimit: s.petty_cash_limit,
+      openingDate: toDateRequired(s.opening_date),
+      storeStatus: mapStoreStatus(s.store_status),
+      squareFeet: s.square_feet,
+      bankAccountLast4: s.bank_account_last4,
+      tallyCostCenter: s.tally_cost_center,
+      pettyCashBalance: isMumbaiDemo ? 50000 : Math.floor(Math.random() * 50000) + 10000,
+      virtualCardNumber: isMumbaiDemo ? "4232 4532 7654 8901" : `4232 4532 7654 ${Math.floor(Math.random() * 8999) + 1000}`,
+    };
+  });
 
   await prisma.store.createMany({ data: rows, skipDuplicates: true });
   console.log(`   ✓ ${rows.length} stores`);
@@ -192,6 +197,10 @@ async function seedAdmin() {
     {
       rawEmail: "democfo@gmail.com",
       rawRole: "SUPER_ADMIN" as const,
+    },
+    {
+      rawEmail: "deepesh.store@gmail.com",
+      rawRole: "STORE_MANAGER" as const,
     },
   ];
 

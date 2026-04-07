@@ -10,6 +10,7 @@ import {
 import { ApiError } from "../utils/AppError";
 import { NotificationRepository } from "../repository/notification.repository";
 import { CacheService } from "../utils/cache";
+import { getDemoAwareAmount } from "../utils/razorpay-demo";
 
 export class ApprovalService implements IApprovalService {
   private razorpay: Razorpay;
@@ -57,24 +58,29 @@ export class ApprovalService implements IApprovalService {
     utilities.forEach(u => totalAmount += Number(u.billAmount));
     pettyCash.forEach(p => totalAmount += Number(p.amount));
 
-    let amountInPaise = Math.round(totalAmount * 100);
-    
-    // DEMO MODE: If using Razorpay Test Key, cap the amount at ₹1.00 (100 paise) 
-    // to avoid "Amount exceeds maximum amount allowed" error for high-value rent payments.
-    if (process.env.Test_Key_ID?.startsWith('rzp_test_') && amountInPaise > 100000000) {
-      console.log(`[Demo Mode] Capping payment amount of ₹${totalAmount} to ₹1.00 for Razorpay Test Order.`);
-      amountInPaise = 100; // ₹1.00
+    const demoAwareAmount = getDemoAwareAmount(totalAmount, process.env.Test_Key_ID);
+    if (demoAwareAmount.isDemoCapped) {
+      console.log(
+        `[Demo Mode] Capping approval payment from Rs.${demoAwareAmount.actualAmountRupees} to Rs.${demoAwareAmount.gatewayAmountRupees} for Razorpay test checkout.`
+      );
     }
 
     const options = {
-      amount: amountInPaise,
+      amount: demoAwareAmount.gatewayAmountPaise,
       currency: "INR",
       receipt: `receipt_approval_${Date.now()}`,
     };
 
     try {
       const order = await this.razorpay.orders.create(options);
-      return order;
+      return {
+        ...order,
+        actualAmount: demoAwareAmount.actualAmountRupees,
+        actualAmountPaise: demoAwareAmount.actualAmountPaise,
+        gatewayAmount: demoAwareAmount.gatewayAmountRupees,
+        gatewayAmountPaise: demoAwareAmount.gatewayAmountPaise,
+        isDemoCapped: demoAwareAmount.isDemoCapped,
+      };
     } catch (error) {
       console.error("Razorpay Order Creation Error:", error);
       throw new ApiError("Failed to create Razorpay order", 500);
@@ -119,27 +125,50 @@ export class ApprovalService implements IApprovalService {
       pettyCashIds.length > 0 ? this.approvalRepo.getPettyCashByIds(pettyCashIds) : Promise.resolve([]),
     ]);
 
-    // Create notifications for transactions
+    // Notify both admins and the relevant store manager when central payments are completed.
     const notifications: any[] = [];
 
     rents.forEach(rent => {
-      notifications.push({
-        storeId: rent.storeId,
-        adminEmail: "all",
-        title: "Payment Successful",
-        message: `Rent payment (ID: ${rent.paymentId}) processed (UTR: ${razorpay_payment_id}).`,
-        type: "TRANSACTION",
-      });
+      notifications.push(
+        {
+          storeId: rent.storeId,
+          adminEmail: "all",
+          title: "Payment Successful",
+          message: `Rent payment (ID: ${rent.paymentId}) processed (UTR: ${razorpay_payment_id}).`,
+          type: "TRANSACTION",
+          rentPaymentId: rent.paymentId
+        },
+        {
+          storeId: rent.storeId,
+          adminEmail: "store",
+          title: "Store Rent Paid",
+          message: `Your store rent payment (ID: ${rent.paymentId}) was completed by the central team (UTR: ${razorpay_payment_id}).`,
+          type: "TRANSACTION",
+          rentPaymentId: rent.paymentId
+        }
+      );
     });
 
     utilities.forEach(util => {
-      notifications.push({
-        storeId: util.storeId,
-        adminEmail: "all",
-        title: "Payment Successful",
-        message: `Utility payment (ID: ${util.billId}) processed (UTR: ${razorpay_payment_id}).`,
-        type: "TRANSACTION",
-      });
+      const utilityLabel = this.formatUtilityType(util.utilityType);
+      notifications.push(
+        {
+          storeId: util.storeId,
+          adminEmail: "all",
+          title: "Payment Successful",
+          message: `Utility payment (ID: ${util.billId}) processed (UTR: ${razorpay_payment_id}).`,
+          type: "TRANSACTION",
+          utilityBillId: util.billId
+        },
+        {
+          storeId: util.storeId,
+          adminEmail: "store",
+          title: `${utilityLabel} Bill Paid`,
+          message: `Your store's ${utilityLabel.toLowerCase()} bill (ID: ${util.billId}) was paid by the central team (UTR: ${razorpay_payment_id}).`,
+          type: "TRANSACTION",
+          utilityBillId: util.billId
+        }
+      );
     });
 
     pettyCashItems.forEach(pc => {
@@ -149,6 +178,7 @@ export class ApprovalService implements IApprovalService {
         title: "Payment Successful",
         message: `Petty Cash payment (ID: ${pc.requestId}) processed (UTR: ${razorpay_payment_id}).`,
         type: "TRANSACTION",
+        pettyCashId: pc.requestId
       });
     });
 

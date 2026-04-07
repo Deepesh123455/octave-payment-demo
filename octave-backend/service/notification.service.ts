@@ -5,15 +5,15 @@ import { CacheService } from "../utils/cache";
 export class NotificationService {
   constructor(private notificationRepo: NotificationRepository) {}
 
-  async getUnreadNotifications(): Promise<Notification[]> {
-    return CacheService.getOrSet("NOTIFICATION", { type: "unread" }, () =>
-      this.notificationRepo.getUnreadNotifications()
+  async getUnreadNotifications(filters?: { role?: string; storeId?: string }): Promise<Notification[]> {
+    return CacheService.getOrSet("NOTIFICATION", { type: "unread", ...filters }, () =>
+      this.notificationRepo.getUnreadNotifications(filters)
     );
   }
 
-  async getUnreadCounts() {
-    return CacheService.getOrSet("NOTIFICATION", { type: "counts" }, () =>
-      this.notificationRepo.getUnreadCounts()
+  async getUnreadCounts(filters?: { role?: string; storeId?: string }) {
+    return CacheService.getOrSet("NOTIFICATION", { type: "counts", ...filters }, () =>
+      this.notificationRepo.getUnreadCounts(filters)
     );
   }
 
@@ -22,8 +22,8 @@ export class NotificationService {
     await CacheService.invalidate("NOTIFICATION");
   }
 
-  async markTypeAsRead(type: string): Promise<void> {
-    await this.notificationRepo.markTypeAsRead(type);
+  async markTypeAsRead(type: string, filters?: { role?: string; storeId?: string }): Promise<void> {
+    await this.notificationRepo.markTypeAsRead(type, filters);
     await CacheService.invalidate("NOTIFICATION");
   }
 

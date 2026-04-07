@@ -24,6 +24,7 @@ export interface IPettyCashRepository {
   bulkApprove(ids: string[], approvedBy: string): Promise<void>;
   findByIds(ids: string[]): Promise<any[]>;
   updateStatus(ids: string[], status: string): Promise<void>;
+  processDirectPayment(data: { storeId: string; amount: number; category: string; description: string; requestedBy: string; razorpayPaymentId: string }): Promise<any>;
 }
 
 export interface IPettyCashService {
@@ -31,4 +32,5 @@ export interface IPettyCashService {
   createRequest(data: any): Promise<any>;
   approveRequests(ids: string[], approvedBy: string): Promise<void>;
   rejectRequests(ids: string[], rejectedBy: string): Promise<void>;
+  processDirectPayment(data: { storeId: string; amount: number; category: string; description: string; requestedBy: string; razorpayPaymentId: string }): Promise<any>;
 }

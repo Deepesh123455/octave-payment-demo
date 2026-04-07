@@ -22,7 +22,6 @@ import {
   XCircle,
   CreditCard,
   Search,
-  Filter,
   Loader2,
   AlertCircle,
   ShieldAlert,
@@ -52,7 +51,7 @@ declare global {
   }
 }
 
-type SourceType = "RENT" | "UTILITY" | "PETTY_CASH";
+type SourceType = "RENT" | "UTILITY";
 
 export default function ApprovalCenter() {
   const { user } = useAuth();
@@ -96,14 +95,6 @@ export default function ApprovalCenter() {
     return () => { document.body.removeChild(script); };
   }, []);
 
-  const uniqueStores = useMemo(() => {
-    const seen = new Map<string, string>();
-    items.forEach((i: any) => {
-      if (!seen.has(i.storeId)) seen.set(i.storeId, i.storeName);
-    });
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [items]);
-
   const filtered = useMemo(() => {
     return items.filter((item: any) => {
       const matchSearch =
@@ -119,10 +110,10 @@ export default function ApprovalCenter() {
     amount: filtered.reduce((s: number, i: any) => s + i.amount, 0),
     rent: response?.meta?.counts?.RENT || 0,
     utility: response?.meta?.counts?.UTILITY || 0,
-    petty: response?.meta?.counts?.PETTY_CASH || 0,
   }), [response, filtered]);
 
   const toggleSelect = (item: any) => {
+    if (!isPrivileged) return;
     const key = `${item.sourceType}-${item.id}`;
     const newSelected = new Set(selectedItems);
     if (newSelected.has(key)) {
@@ -134,6 +125,7 @@ export default function ApprovalCenter() {
   };
 
   const toggleSelectAll = () => {
+    if (!isPrivileged) return;
     const allSelected = filtered.length > 0 && filtered.every((i: any) => selectedItems.has(`${i.sourceType}-${i.id}`));
     if (allSelected) {
       const newSelected = new Set(selectedItems);
@@ -156,19 +148,37 @@ export default function ApprovalCenter() {
       return;
     }
 
+    if (paymentItems.some((item) => item.sourceType === "PETTY_CASH")) {
+      toast.error("Petty cash is settled by the store manager from the petty cash module.");
+      return;
+    }
+
     const isBulk = paymentItems.length > 1;
     const toastId = toast.loading(isBulk ? `Initializing bulk payment for ${paymentItems.length} items...` : "Initializing secure payment...");
     
     try {
       const orderResponse = await initiate(paymentItems.map(item => ({ id: item.id, sourceType: item.sourceType })));
       const order = orderResponse.data;
+      const actualAmount = Number(order.actualAmount ?? paymentItems.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+      const gatewayAmount = Number(order.gatewayAmount ?? order.amount / 100);
+
+      if (order.isDemoCapped) {
+        toast.info(
+          `Demo checkout will charge ${formatCurrency(gatewayAmount)} while we display and record the actual payable amount of ${formatCurrency(actualAmount)}.`,
+          { id: toastId }
+        );
+      }
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY || "rzp_test_SXMYKIsju0M92G",
         amount: order.amount,
         currency: order.currency,
         name: "Octave Apparels",
-        description: isBulk ? `Bulk payment for ${paymentItems.length} items` : paymentItems[0].description,
+        description: order.isDemoCapped
+          ? `Demo checkout for ${formatCurrency(actualAmount)} actual payment`
+          : isBulk
+          ? `Bulk payment for ${paymentItems.length} items`
+          : paymentItems[0].description,
         order_id: order.id,
         handler: async (rzpResponse: any) => {
           toast.loading("Verifying payment...", { id: toastId });
@@ -180,7 +190,13 @@ export default function ApprovalCenter() {
               items: paymentItems.map(item => ({ id: item.id, sourceType: item.sourceType })),
             });
             
-            toast.success(isBulk ? "Bulk payment successful!" : `${paymentItems[0].sourceType === "RENT" ? "Rent payment" : paymentItems[0].sourceType === "UTILITY" ? "Utility bill" : "Petty cash request"} successful!`, { 
+            toast.success(
+              order.isDemoCapped
+                ? `Demo payment completed. Actual amount recorded: ${formatCurrency(actualAmount)}.`
+                : isBulk
+                ? "Bulk payment successful!"
+                : `${paymentItems[0].sourceType === "RENT" ? "Rent payment" : paymentItems[0].sourceType === "UTILITY" ? "Utility bill" : "Petty cash request"} successful!`,
+              { 
               id: toastId,
             });
             setSelectedItems(new Set());
@@ -213,7 +229,7 @@ export default function ApprovalCenter() {
         id: toastId,
         action: {
           label: `View in ${type === "RENT" ? "Rent" : type === "UTILITY" ? "Utility" : "Petty Cash"}`,
-          onClick: () => navigate(type === "RENT" ? "/rent-payments" : type === "UTILITY" ? "/utility-bills" : "/petty-cash"),
+          onClick: () => navigate(type === "RENT" ? "/rent" : type === "UTILITY" ? "/utilities" : "/petty-cash"),
         },
       });
       setRejectTarget(null);
@@ -248,13 +264,9 @@ export default function ApprovalCenter() {
                 <Zap className="h-3.5 w-3.5 text-accent" />
                 <span>{totals.utility} Utility</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-secondary/50 rounded-full px-3 py-1.5 text-xs font-medium border border-border/50">
-                <Receipt className="h-3.5 w-3.5 text-success" />
-                <span>{totals.petty} Petty Cash</span>
-              </div>
             </div>
 
-            {selectedItems.size > 0 && (
+            {isPrivileged && selectedItems.size > 0 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -335,7 +347,6 @@ export default function ApprovalCenter() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="RENT">Rent</SelectItem>
                     <SelectItem value="UTILITY">Utility</SelectItem>
-                    <SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -368,11 +379,13 @@ export default function ApprovalCenter() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12">
-                          <Checkbox
-                            checked={filtered.length > 0 && filtered.every((i: any) => selectedItems.has(`${i.sourceType}-${i.id}`))}
-                            onCheckedChange={toggleSelectAll}
-                            aria-label="Select all on this page"
-                          />
+                          {isPrivileged && (
+                            <Checkbox
+                              checked={filtered.length > 0 && filtered.every((i: any) => selectedItems.has(`${i.sourceType}-${i.id}`))}
+                              onCheckedChange={toggleSelectAll}
+                              aria-label="Select all on this page"
+                            />
+                          )}
                         </TableHead>
                         <TableHead className="w-24">Type</TableHead>
                         <TableHead>Store</TableHead>
@@ -398,11 +411,13 @@ export default function ApprovalCenter() {
                             }`}
                           >
                             <TableCell>
-                              <Checkbox
-                                checked={selectedItems.has(`${item.sourceType}-${item.id}`)}
-                                onCheckedChange={() => toggleSelect(item)}
-                                aria-label={`Select ${item.description}`}
-                              />
+                              {isPrivileged && (
+                                <Checkbox
+                                  checked={selectedItems.has(`${item.sourceType}-${item.id}`)}
+                                  onCheckedChange={() => toggleSelect(item)}
+                                  aria-label={`Select ${item.description}`}
+                                />
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge

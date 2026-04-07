@@ -14,7 +14,7 @@ import { useStores } from "@/hooks/apis/useStoreQueries";
 import { useNotifications, useMarkRead } from "@/hooks/apis/useNotificationQueries";
 
 export function TopBar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isStoreManager } = useAuth();
   const navigate = useNavigate();
   const { data: storeResponse } = useStores();
   const { data: notificationResponse } = useNotifications();
@@ -40,6 +40,7 @@ export function TopBar() {
       case "UTILITY_DUE": return <Zap className="h-4 w-4 text-accent" />;
       case "PETTY_CASH": return <Receipt className="h-4 w-4 text-success" />;
       case "APPROVAL": return <Check className="h-4 w-4 text-primary" />;
+      case "TRANSACTION": return <Receipt className="h-4 w-4 text-foreground" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -50,6 +51,7 @@ export function TopBar() {
       case "UTILITY_DUE": return "bg-accent/10";
       case "PETTY_CASH": return "bg-success/10";
       case "APPROVAL": return "bg-primary/10";
+      case "TRANSACTION": return "bg-foreground/10";
       default: return "bg-secondary/10";
     }
   };
@@ -64,6 +66,7 @@ export function TopBar() {
     <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 shrink-0">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
+        {!isStoreManager && (
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -141,6 +144,7 @@ export function TopBar() {
             )}
           </AnimatePresence>
         </div>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <Popover>

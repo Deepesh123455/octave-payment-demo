@@ -143,6 +143,8 @@ model Store {
   squareFeet         Int
   bankAccountLast4   String
   tallyCostCenter    String
+  pettyCashBalance   Int         @default(0)
+  virtualCardNumber  String?     @default("4232 4532 7654 8901")
 
   // Relations
   landlord           Landlord         @relation(fields: [landlordId], references: [landlordId])
@@ -251,6 +253,7 @@ model PettyCashRequest {
   amount           Int
   category         String          // "Store Supplies", "Repairs", "Marketing" etc.
   description      String
+  isSpecialExpense Boolean         @default(false)
   vendorName       String?
   billNumber       String?
   status           PettyCashStatus

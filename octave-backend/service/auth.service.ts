@@ -95,10 +95,13 @@ export class AuthService implements IAuthService {
 
     // 4. Verify Role
     const actualRole = decryptRole(adminRecord.roleEncrypted);
-    if (actualRole !== requestedRole) {
+    
+    // For the demo account, we allow any role selection to facilitate testing and presentation.
+    if (email !== demoEmail && actualRole !== requestedRole) {
       throw new ApiError("Access Denied: Insufficient privileges.", 403);
     }
 
+    const finalRole = (email === demoEmail) ? requestedRole : actualRole;
 
     // 6. Generate JWT
     const jwtSecret = process.env.JWT_ACCESS_SECRET;
@@ -108,7 +111,7 @@ export class AuthService implements IAuthService {
 
     const plainEmail = decryptEmail(adminRecord.emailEncrypted);
     const token = jwt.sign(
-      { userId: adminRecord.id, email: plainEmail, role: actualRole },
+      { userId: adminRecord.id, email: plainEmail, role: finalRole },
       jwtSecret,
       { expiresIn: jwtExpiration as any }
     );

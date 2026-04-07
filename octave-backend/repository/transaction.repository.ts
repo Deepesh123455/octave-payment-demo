@@ -23,6 +23,9 @@ export class TransactionRepository {
 
   async getAllTransactions(page: number = 1, limit: number = 20, storeId?: string, sourceType?: string): Promise<{ data: TransactionItem[]; meta: any }> {
     const skip = (page - 1) * limit;
+    
+    // Explicitly handle "all" storeId and sanitize parameters
+    const filterStoreId = (storeId === "all" || !storeId) ? null : storeId;
 
     const dataRaw: any[] = await this.prisma.$queryRaw`
       SELECT * FROM (
@@ -31,7 +34,7 @@ export class TransactionRepository {
         LEFT JOIN stores s ON rp."storeId" = s."storeId"
         LEFT JOIN landlords l ON rp."landlordId" = l."landlordId"
         WHERE rp.status = 'Paid'
-          AND (${storeId || null}::text IS NULL OR rp."storeId" = ${storeId})
+          AND (${filterStoreId}::text IS NULL OR rp."storeId" = ${filterStoreId})
         
         UNION ALL
         
@@ -39,15 +42,15 @@ export class TransactionRepository {
         FROM utility_bills ub
         LEFT JOIN stores s ON ub."storeId" = s."storeId"
         WHERE ub.status = 'Paid'
-          AND (${storeId || null}::text IS NULL OR ub."storeId" = ${storeId})
+          AND (${filterStoreId}::text IS NULL OR ub."storeId" = ${filterStoreId})
 
         UNION ALL
 
-        SELECT pcr.id, pcr."storeId", pcr.amount, pcr."paymentDate" as date, 'PETTY_CASH' as "sourceType", pcr."transactionId", pcr.category::text, pcr.description, s."storeName", pcr."vendorName" as "ownerName"
+        SELECT pcr.id, pcr."storeId", pcr.amount, COALESCE(pcr."paymentDate", pcr."requestDate") as date, 'PETTY_CASH' as "sourceType", COALESCE(pcr."transactionId", pcr."requestId") as "transactionId", pcr.category::text, pcr.description, s."storeName", COALESCE(pcr."vendorName", 'Vendor') as "ownerName"
         FROM petty_cash_requests pcr
         LEFT JOIN stores s ON pcr."storeId" = s."storeId"
-        WHERE pcr.status = 'Paid'
-          AND (${storeId || null}::text IS NULL OR pcr."storeId" = ${storeId})
+        WHERE (pcr.status = 'Paid' OR pcr.status = 'Auto_Approved' OR pcr.status = 'Approved')
+          AND (${filterStoreId}::text IS NULL OR pcr."storeId" = ${filterStoreId})
       ) as combined
       WHERE (${sourceType || null}::text IS NULL OR combined."sourceType" = ${sourceType})
       ORDER BY combined.date DESC
@@ -57,19 +60,19 @@ export class TransactionRepository {
     const countRaw: any[] = await this.prisma.$queryRaw`
       SELECT SUM(count) as total FROM (
         SELECT COUNT(*) as count FROM rent_payments 
-        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+        WHERE status = 'Paid' AND (${filterStoreId}::text IS NULL OR "storeId" = ${filterStoreId})
           AND (${sourceType || null}::text IS NULL OR 'RENT' = ${sourceType})
         
         UNION ALL
         
         SELECT COUNT(*) as count FROM utility_bills 
-        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+        WHERE status = 'Paid' AND (${filterStoreId}::text IS NULL OR "storeId" = ${filterStoreId})
           AND (${sourceType || null}::text IS NULL OR 'UTILITY' = ${sourceType})
         
         UNION ALL
         
         SELECT COUNT(*) as count FROM petty_cash_requests 
-        WHERE status = 'Paid' AND (${storeId || null}::text IS NULL OR "storeId" = ${storeId})
+        WHERE (status = 'Paid' OR status = 'Auto_Approved' OR status = 'Approved') AND (${filterStoreId}::text IS NULL OR "storeId" = ${filterStoreId})
           AND (${sourceType || null}::text IS NULL OR 'PETTY_CASH' = ${sourceType})
       ) as count_combined
     `;
@@ -83,7 +86,7 @@ export class TransactionRepository {
       ownerName: row.ownerName || (row.sourceType === "UTILITY" ? "Utility Provider" : "Vendor"),
       amount: Number(row.amount),
       date: row.date,
-      transactionId: row.transactionId || "N/A",
+      transactionId: row.transactionId || row.transactionid || row.requestId || row.requestid || "N/A",
       category: row.category,
       description: row.description
     }));

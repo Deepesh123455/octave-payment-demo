@@ -21,3 +21,8 @@ export const rejectPettyCashRequests = async (ids: string[], rejectedBy: string)
   const response = await api.post("/petty-cash/reject", { ids, rejectedBy });
   return response.data;
 };
+
+export const processDirectPayment = async (data: { storeId: string; amount: number; category: string; description: string; requestedBy: string; razorpayPaymentId: string }) => {
+  const response = await api.post("/petty-cash/direct-payment", data);
+  return response.data;
+};

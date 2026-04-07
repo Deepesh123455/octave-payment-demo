@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Pagination,
   PaginationContent,
@@ -16,6 +16,12 @@ interface DynamicPaginationProps {
 }
 
 export function DynamicPagination({ currentPage, totalPages, onPageChange }: DynamicPaginationProps) {
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      onPageChange(totalPages);
+    }
+  }, [currentPage, totalPages, onPageChange]);
+
   if (totalPages <= 1) return null;
 
   const maxVisiblePages = 5;

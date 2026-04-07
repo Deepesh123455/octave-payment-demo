@@ -17,16 +17,17 @@ export class UtilityService implements IUtilityService {
   async approveUtilities(ids: string[]): Promise<void> {
     const items = await this.utilityRepo.findByIds(ids);
     await this.utilityRepo.bulkApprove(ids);
-    for (const item of items) {
-      await this.notificationRepo.createNotification({
+
+    const notifications = items.map(item => ({
         storeId: item.storeId,
         adminEmail: "all",
         title: "Utility Bill Approved",
         message: `Utility bill (ID: ${item.billId}) has been approved and moved to Approval Center.`,
         type: "APPROVAL",
         utilityBillId: item.billId
-      });
-    }
+      }));
+
+    await this.notificationRepo.createManyNotifications(notifications);
 
     // Invalidate caches
     await CacheService.invalidateMultiple(["UTILITY", "APPROVAL", "NOTIFICATION"]);

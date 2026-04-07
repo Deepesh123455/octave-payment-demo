@@ -22,7 +22,7 @@ api.interceptors.request.use(
   }
 );
 
-export type AppRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "EXPENSE_VIEWER";
+export type AppRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "EXPENSE_VIEWER" | "STORE_MANAGER";
 
 export interface SendOtpPayload {
   email: string;

@@ -76,4 +76,22 @@ export class PettyCashController {
       next(error);
     }
   };
+
+  processDirectPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { storeId, amount, category, description, requestedBy, razorpayPaymentId } = req.body;
+      if (!storeId || !amount || !category || !description || !requestedBy || !razorpayPaymentId) {
+        throw new ApiError("Missing required fields for direct payment", 400);
+      }
+      const payment = await this.pettyCashService.processDirectPayment({
+        storeId, amount, category, description, requestedBy, razorpayPaymentId
+      });
+      res.status(200).json({
+        status: "success",
+        data: payment
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

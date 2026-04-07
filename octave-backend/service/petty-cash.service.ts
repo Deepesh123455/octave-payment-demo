@@ -10,7 +10,7 @@ export class PettyCashService implements IPettyCashService {
   ) {}
 
   async getAllRequests(filters?: { storeId?: string; status?: string; page?: number; limit?: number }): Promise<{ data: any[]; meta: any }> {
-    return CacheService.getOrSet("PETTY_CASH", filters || {}, () =>
+    return CacheService.getOrSet("PETTY_CASH", { cacheSchema: "manager-name-v2", ...(filters || {}) }, () =>
       this.pettyCashRepo.findAll(filters)
     );
   }
@@ -49,10 +49,10 @@ export class PettyCashService implements IPettyCashService {
     // Create notification
     await this.notificationRepo.createNotification({
       storeId: storeId,
-      adminEmail: "all",
+      adminEmail: "admins",
       title: "New Petty Cash Request",
       message: `A new request for ${category} (₹${amount}) was created by ${requestedBy}. Status: ${status}`,
-      type: status === "Auto_Approved" ? "APPROVAL" : "PETTY_CASH",
+      type: "PETTY_CASH",
       pettyCashId: requestId
     });
 
@@ -67,26 +67,52 @@ export class PettyCashService implements IPettyCashService {
     const items = await this.pettyCashRepo.findByIds(ids);
     await this.pettyCashRepo.bulkApprove(ids, approvedBy);
 
-    // Create notifications for Approval Center in batch
-    const notifications = items.map(item => ({
-      storeId: item.storeId,
-      adminEmail: "all",
-      title: "Petty Cash Approved",
-      message: `Petty Cash request (ID: ${item.requestId}) has been approved and moved to Approval Center.`,
-      type: "APPROVAL",
-      pettyCashId: item.requestId
-    }));
+    // Notify the petty cash module so store managers can settle approved requests there.
+    const notifications = items.flatMap(item => ([
+      {
+        storeId: item.storeId,
+        adminEmail: "store",
+        title: "Petty Cash Approved",
+        message: `Petty Cash request (ID: ${item.requestId}) has been approved. It is now available in your transaction history.`,
+        type: "PETTY_CASH",
+        pettyCashId: item.requestId
+      },
+      {
+        storeId: item.storeId,
+        adminEmail: "all",
+        title: "Transaction Updated",
+        message: `Approved petty cash request (ID: ${item.requestId}) has been added to transaction history.`,
+        type: "TRANSACTION",
+        pettyCashId: item.requestId
+      }
+    ]));
 
     await this.notificationRepo.createManyNotifications(notifications);
-    await CacheService.invalidateMultiple(["PETTY_CASH", "APPROVAL", "NOTIFICATION"]);
+    await CacheService.invalidateMultiple(["PETTY_CASH", "APPROVAL", "NOTIFICATION", "TRANSACTION"]);
   }
 
   async rejectRequests(ids: string[], rejectedBy: string): Promise<void> {
     if (!ids || ids.length === 0) {
       throw new ApiError("No request IDs provided", 400);
     }
+    const items = await this.pettyCashRepo.findByIds(ids);
     // Update status to Rejected
     await this.pettyCashRepo.updateStatus(ids, "Rejected");
+    const notifications = items.map(item => ({
+      storeId: item.storeId,
+      adminEmail: "store",
+      title: "Petty Cash Rejected",
+      message: `Petty Cash request (ID: ${item.requestId}) has been rejected. Please review and resubmit if needed.`,
+      type: "PETTY_CASH",
+      pettyCashId: item.requestId
+    }));
+    await this.notificationRepo.createManyNotifications(notifications);
     await CacheService.invalidateMultiple(["PETTY_CASH", "APPROVAL", "NOTIFICATION"]);
+  }
+
+  async processDirectPayment(data: { storeId: string; amount: number; category: string; description: string; requestedBy: string; razorpayPaymentId: string }): Promise<any> {
+    const result = await this.pettyCashRepo.processDirectPayment(data);
+    await CacheService.invalidateMultiple(["PETTY_CASH", "STORE", "TRANSACTION", "NOTIFICATION"]);
+    return result;
   }
 }

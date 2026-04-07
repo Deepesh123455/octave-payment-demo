@@ -35,4 +35,24 @@ export class StoreController {
       next(error);
     }
   };
+
+  updatePettyCashBalance = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { amount } = req.body;
+
+      if (amount === undefined || amount === null) {
+        throw new ApiError("Amount is required", 400);
+      }
+
+      const store = await this.storeService.updatePettyCashBalance(id, Number(amount));
+
+      res.status(200).json({
+        status: "success",
+        data: store,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -12,7 +12,7 @@ import crypto from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const IV_BYTES = 12; // 96-bit IV — recommended for GCM
 const TAG_BYTES = 16; // 128-bit auth tag — GCM default
-export type AppRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "EXPENSE_VIEWER";
+export type AppRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "EXPENSE_VIEWER" | "STORE_MANAGER";
 
 // ── Key loading ───────────────────────────────────────────────────────────────
 // Called once at module load — throws immediately on startup if keys are missing
@@ -169,7 +169,8 @@ export function decryptRole(stored: string): AppRole {
   if (
     plain !== "SUPER_ADMIN" &&
     plain !== "FINANCE_ADMIN" &&
-    plain !== "EXPENSE_VIEWER"
+    plain !== "EXPENSE_VIEWER" &&
+    plain !== "STORE_MANAGER"
   ) {
     throw new ApiError(
       `[crypto] decryptRole: unexpected role value after decryption (${plain})`,

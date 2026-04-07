@@ -13,6 +13,7 @@ const ROLES: { value: AppRole; label: string; description: string }[] = [
   { value: "SUPER_ADMIN", label: "Super Admin", description: "Full system access" },
   { value: "FINANCE_ADMIN", label: "Finance Admin", description: "Payments & approvals" },
   { value: "EXPENSE_VIEWER", label: "Expense Viewer", description: "View-only access" },
+  { value: "STORE_MANAGER", label: "Store Manager", description: "Manage store petty cash" },
 ];
 
 export default function LoginPage() {
@@ -36,10 +37,17 @@ export default function LoginPage() {
     // ─── DEMO BYPASS ───
     if (email.toLowerCase() === "democfo@gmail.com") {
       console.log("[Demo] Bypassing OTP for demo user");
+      
+      let demoStoreId = "";
+      if (role === "STORE_MANAGER") {
+        demoStoreId = "STO001";
+      }
+
       login("demo-token", { 
         id: "demo-id-cfo", 
         email: "democfo@gmail.com", 
-        role: role 
+        role: role,
+        storeId: demoStoreId // Added storeId for demo context
       });
       navigate("/");
       return;

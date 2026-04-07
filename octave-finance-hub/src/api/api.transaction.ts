@@ -23,8 +23,8 @@ export const getTransactions = async (
     page: page.toString(), 
     limit: limit.toString() 
   });
-  if (storeId) params.append("storeId", storeId);
-  if (sourceType) params.append("sourceType", sourceType);
+  if (storeId && storeId !== "all") params.append("storeId", storeId);
+  if (sourceType && sourceType !== "all") params.append("sourceType", sourceType);
   
   const response = await api.get(`/transactions?${params.toString()}`);
   return response.data;

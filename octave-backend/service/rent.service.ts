@@ -4,6 +4,7 @@ import { IRentRepository, IRentService, VerifyPaymentPayload } from "../interfac
 import { ApiError } from "../utils/AppError";
 import { NotificationRepository } from "../repository/notification.repository";
 import { CacheService } from "../utils/cache";
+import { getDemoAwareAmount } from "../utils/razorpay-demo";
 
 export class RentService implements IRentService {
   private razorpay: Razorpay;
@@ -38,24 +39,29 @@ export class RentService implements IRentService {
 
     // Calculate total net payable in Paise (Razorpay expects smallest currency unit)
     const totalAmount = payments.reduce((sum, p) => sum + p.netPayable, 0);
-    let amountInPaise = totalAmount * 100;
-
-    // DEMO MODE: If using Razorpay Test Key, cap the amount at ₹1.00 (100 paise) 
-    // to avoid "Amount exceeds maximum amount allowed" error for high-value rent payments.
-    if (process.env.Test_Key_ID?.startsWith('rzp_test_') && amountInPaise > 1000000) {
-      console.log(`[Demo Mode] Capping rent payment of ₹${totalAmount} to ₹1.00 for Razorpay Test Order.`);
-      amountInPaise = 100; // ₹1.00
+    const demoAwareAmount = getDemoAwareAmount(totalAmount, process.env.Test_Key_ID);
+    if (demoAwareAmount.isDemoCapped) {
+      console.log(
+        `[Demo Mode] Capping rent payment from Rs.${demoAwareAmount.actualAmountRupees} to Rs.${demoAwareAmount.gatewayAmountRupees} for Razorpay test checkout.`
+      );
     }
 
     const options = {
-      amount: amountInPaise,
+      amount: demoAwareAmount.gatewayAmountPaise,
       currency: "INR",
       receipt: `receipt_bulk_${Date.now()}`,
     };
 
     try {
       const order = await this.razorpay.orders.create(options);
-      return order;
+      return {
+        ...order,
+        actualAmount: demoAwareAmount.actualAmountRupees,
+        actualAmountPaise: demoAwareAmount.actualAmountPaise,
+        gatewayAmount: demoAwareAmount.gatewayAmountRupees,
+        gatewayAmountPaise: demoAwareAmount.gatewayAmountPaise,
+        isDemoCapped: demoAwareAmount.isDemoCapped,
+      };
     } catch (error) {
       console.error("Razorpay Order Creation Error:", error);
       throw new ApiError("Failed to create Razorpay order", 500);

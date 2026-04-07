@@ -16,4 +16,10 @@ export class StoreService implements IStoreService {
       this.storeRepo.findById(id)
     );
   }
+
+  async updatePettyCashBalance(id: string, amount: number): Promise<Store> {
+    const store = await this.storeRepo.updatePettyCashBalance(id, amount);
+    await CacheService.invalidateMultiple(["STORE"]);
+    return store;
+  }
 }

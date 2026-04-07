@@ -21,6 +21,9 @@ export default function RentPayments() {
   const [page, setPage] = useState(1);
   const { user } = useAuth();
   const { mutate: markRead } = useMarkRead();
+  
+  const isPrivileged =
+    user?.role === "SUPER_ADMIN" || user?.role === "FINANCE_ADMIN";
 
   useEffect(() => {
     markRead({ type: "RENT_DUE" });
@@ -51,10 +54,12 @@ export default function RentPayments() {
   const filteredRecords = processRecords;
 
   const toggleSelect = (id: string) => {
+    if (!isPrivileged) return;
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
   const toggleAllInTab = () => {
+    if (!isPrivileged) return;
     const selectable = filteredRecords.filter((r: any) => {
       return !["Approved", "Paid"].includes(r.status);
     });
@@ -150,7 +155,9 @@ export default function RentPayments() {
             <p className="text-muted-foreground text-sm mt-1">Monthly rent obligations across all stores</p>
           </div>
           <div className="flex gap-2">
-            <Button 
+            {
+              isPrivileged && 
+              <Button 
               variant="outline"
               className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               disabled={!isBulkRejectEnabled} 
@@ -158,13 +165,17 @@ export default function RentPayments() {
             >
               <XCircle className="h-4 w-4 mr-2" /> Reject Selected {selected.length > 0 && `(${selected.length})`}
             </Button>
-            <Button 
+            }
+            { isPrivileged &&
+               <Button 
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={!isBulkActionEnabled} 
               onClick={() => handleApprove(selected)}
             >
               <CheckCircle className="h-4 w-4 mr-2" /> Approve Selected {selected.length > 0 && `(${selected.length})`}
             </Button>
+            }
+           
           </div>
         </div>
 
@@ -203,7 +214,7 @@ export default function RentPayments() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-10 text-center">
-                          {filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).length > 0 && (
+                          {isPrivileged && filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).length > 0 && (
                             <Checkbox 
                               checked={filteredRecords.filter(r => !["Approved", "Paid"].includes(r.status)).every(r => selected.includes(r.id))}
                               onCheckedChange={toggleAllInTab}
@@ -219,7 +230,7 @@ export default function RentPayments() {
                         <TableHead className="text-right">Net Payable</TableHead>
                         <TableHead>Due Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        {isPrivileged && <TableHead className="text-right">Action</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -228,7 +239,7 @@ export default function RentPayments() {
                           filteredRecords.map((r: any) => (
                             <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b transition-colors hover:bg-muted/50">
                               <TableCell className="text-center">
-                                {!["Approved", "Paid"].includes(r.status) && (
+                                {isPrivileged && !["Approved", "Paid"].includes(r.status) && (
                                   <Checkbox 
                                     checked={selected.includes(r.id)} 
                                     onCheckedChange={() => toggleSelect(r.id)} 
@@ -251,10 +262,12 @@ export default function RentPayments() {
                                   {r.status.replace("_", " ")}
                                 </Badge>
                               </TableCell>
+                              {isPrivileged && (
                               <TableCell className="text-right">
                                 {(r.status === "Pending" || r.status === "Overdue" || r.status === "Pending_Approval" || r.status === "Rejected") ? (
                                   <div className="flex items-center justify-end gap-1">
-                                    <Button 
+                                    {
+                                      isPrivileged &&  <Button 
                                       size="sm" 
                                       variant="ghost" 
                                       className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
@@ -262,7 +275,9 @@ export default function RentPayments() {
                                     >
                                       <FileCheck className="h-4 w-4" />
                                     </Button>
-                                    {r.status !== "Rejected" && (
+                                    }
+                                    
+                                    {r.status !== "Rejected"  && isPrivileged && (
                                       <Button 
                                         size="sm" 
                                         variant="ghost" 
@@ -279,11 +294,12 @@ export default function RentPayments() {
                                   </span>
                                 )}
                               </TableCell>
+                              )}
                             </motion.tr>
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={11} className="text-center py-20 text-muted-foreground">
+                            <TableCell colSpan={isPrivileged ? 11 : 10} className="text-center py-20 text-muted-foreground">
                               <div className="flex flex-col items-center gap-2">
                                 <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center">
                                   <Filter className="h-6 w-6 text-muted-foreground/50" />

@@ -6,7 +6,9 @@ export class NotificationController {
 
   async getUnreadNotifications(req: Request, res: Response, next: NextFunction) {
     try {
-      const notifications = await this.notificationService.getUnreadNotifications();
+      const role = req.query.role as string | undefined;
+      const storeId = req.query.storeId as string | undefined;
+      const notifications = await this.notificationService.getUnreadNotifications({ role, storeId });
       res.status(200).json({
         status: "success",
         results: notifications.length,
@@ -19,7 +21,9 @@ export class NotificationController {
 
   async getCounts(req: Request, res: Response, next: NextFunction) {
     try {
-      const counts = await this.notificationService.getUnreadCounts();
+      const role = req.query.role as string | undefined;
+      const storeId = req.query.storeId as string | undefined;
+      const counts = await this.notificationService.getUnreadCounts({ role, storeId });
       res.status(200).json({
         status: "success",
         data: counts,
@@ -33,7 +37,10 @@ export class NotificationController {
     try {
       const { ids, type } = req.body;
       if (type) {
-        await this.notificationService.markTypeAsRead(type);
+        await this.notificationService.markTypeAsRead(type, {
+          role: req.body.role,
+          storeId: req.body.storeId,
+        });
       } else if (ids && Array.isArray(ids)) {
         await this.notificationService.markAsRead(ids);
       } else {

@@ -15,5 +15,6 @@ router.get("/", pettyCashController.getAllRequests);
 router.post("/", pettyCashController.createRequest);
 router.post("/approve", pettyCashController.approveRequests);
 router.post("/reject", pettyCashController.rejectRequests);
+router.post("/direct-payment", pettyCashController.processDirectPayment);
 
 export default router;
