@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2, AlertCircle, History, Building2, Zap, Receipt, Download, FilterX } from "lucide-react";
+import { Search, Loader2, AlertCircle, History, Building2, Zap, Receipt, Download, FilterX, ChevronDown, ChevronUp } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,7 @@ export default function TransactionsPage() {
   const { user, isStoreManager, clearTxnNotif } = useAuth();
   const [page, setPage] = useState(1);
   const [sourceType, setSourceType] = useState<string>("all");
+  const [showAllVisibleRows, setShowAllVisibleRows] = useState(false);
   
   // Use a fallback storeId for the demo or when it's missing from user object
   const effectiveStoreId = useMemo(() => {
@@ -70,6 +71,15 @@ export default function TransactionsPage() {
       t.description.toLowerCase().includes(search.toLowerCase())
     );
   }, [transactions, search]);
+
+  const visibleTransactions = useMemo(
+    () => (showAllVisibleRows ? filtered : filtered.slice(0, 4)),
+    [filtered, showAllVisibleRows],
+  );
+
+  useEffect(() => {
+    setShowAllVisibleRows(false);
+  }, [filtered.length, page, search, sourceType, storeId]);
 
   const handleClearFilters = () => {
     setSearch("");
@@ -208,7 +218,7 @@ export default function TransactionsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((t) => (
+                    {visibleTransactions.map((t) => (
                       <TableRow key={t.id} className="hover:bg-secondary/30 transition-colors">
                         <TableCell className="whitespace-nowrap text-sm">
                           {new Date(t.date).toLocaleDateString("en-IN", {
@@ -256,6 +266,20 @@ export default function TransactionsPage() {
                 </Table>
               </div>
             )}
+            {filtered.length > 4 && (
+              <div className="pt-4 mt-6 border-t border-border/50 px-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-center text-sm font-medium"
+                  onClick={() => setShowAllVisibleRows((prev) => !prev)}
+                >
+                  {showAllVisibleRows ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                  {showAllVisibleRows ? "Show Less" : `Show ${filtered.length - 4} More`}
+                </Button>
+              </div>
+            )}
+
             {response?.meta && response.meta.totalPages > 1 && (
               <div className="pt-4 mt-6 border-t border-border/50 px-4">
                 <DynamicPagination 

@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   IndianRupee,
   Home,
@@ -12,10 +13,14 @@ import {
   TrendingUp,
   Loader2,
   Receipt,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -70,12 +75,20 @@ const isAdminPendingUtility = (status?: string) =>
 const isPendingPettyReview = (status?: string) =>
   ["Pending", "Pending_CFO", "Escalated"].includes(status || "");
 
+const STORE_DASHBOARD_SERIES = {
+  RENT: { label: "Rent", dataKey: "rent", color: "hsl(var(--chart-1))" },
+  UTILITY: { label: "Utilities", dataKey: "utilities", color: "hsl(var(--chart-3))" },
+  PETTY_CASH: { label: "Petty Cash", dataKey: "petty", color: "hsl(var(--chart-5))" },
+} as const;
+
 export default function Dashboard() {
   const { user, isStoreManager } = useAuth();
   const userName = user?.role || user?.email?.split("@")[0] || "User";
+  const [selectedStoreExpenseType, setSelectedStoreExpenseType] = useState<keyof typeof STORE_DASHBOARD_SERIES>("RENT");
+  const [showAllRecentExpenses, setShowAllRecentExpenses] = useState(false);
 
   const storeId = isStoreManager ? user?.storeId || "STO001" : undefined;
-  const { data: txnResponse, isLoading: txnLoading } = useTransactions(1, 50, storeId);
+  const { data: txnResponse, isLoading: txnLoading } = useTransactions(1, 500, storeId);
   const { data: storesResponse } = useStores();
   const { data: rentResponse, isLoading: rentLoading, isError: rentError } = useRentPayments(1, 500);
   const { data: utilityResponse, isLoading: utilityLoading, isError: utilityError } = useUtilityBills(1, 500);
@@ -91,8 +104,45 @@ export default function Dashboard() {
   const currentStore = isStoreManager
     ? stores.find((s: any) => s.managerEmail === user?.email) || stores.find((s: any) => s.storeId === storeId)
     : null;
+  const storeManagerName = currentStore?.managerName || user?.name || "Store Manager";
 
   const transactions: any[] = txnResponse?.data || [];
+  const selectedStoreSeries = STORE_DASHBOARD_SERIES[selectedStoreExpenseType];
+  const storeMonthlyExpenseData = useMemo(() => {
+    const latestTransactionDate =
+      transactions.length > 0
+        ? transactions.reduce((latest: Date, transaction: any) => {
+            const current = new Date(transaction.date || transaction.createdAt);
+            return current.getTime() > latest.getTime() ? current : latest;
+          }, new Date(transactions[0].date || transactions[0].createdAt))
+        : new Date();
+
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(latestTransactionDate.getFullYear(), latestTransactionDate.getMonth() - (5 - index), 1);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        month: date.toLocaleDateString("en-IN", { month: "short" }),
+        rent: 0,
+        utilities: 0,
+        petty: 0,
+      };
+    });
+
+    const byMonth = new Map(months.map((entry) => [entry.key, entry]));
+    transactions.forEach((transaction: any) => {
+      const date = new Date(transaction.date || transaction.createdAt);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const target = byMonth.get(key);
+      if (!target) return;
+
+      const amount = Number(transaction.amount || 0);
+      if (transaction.sourceType === "RENT") target.rent += amount;
+      if (transaction.sourceType === "UTILITY") target.utilities += amount;
+      if (transaction.sourceType === "PETTY_CASH") target.petty += amount;
+    });
+
+    return months;
+  }, [transactions]);
 
   if (isStoreManager) {
     if (txnLoading) {
@@ -122,9 +172,9 @@ export default function Dashboard() {
     ];
 
     const pieData = [
-      { name: "Rent", value: rentSpend, fill: "hsl(var(--chart-1))" },
-      { name: "Utilities", value: utilitySpend, fill: "hsl(var(--chart-3))" },
-      { name: "Petty Cash", value: pettySpend, fill: "hsl(var(--chart-5))" },
+      { name: "Rent", value: rentSpend, fill: "hsl(var(--chart-1))", sourceType: "RENT" as const },
+      { name: "Utilities", value: utilitySpend, fill: "hsl(var(--chart-3))", sourceType: "UTILITY" as const },
+      { name: "Petty Cash", value: pettySpend, fill: "hsl(var(--chart-5))", sourceType: "PETTY_CASH" as const },
     ].filter((entry) => entry.value > 0);
 
     const recentTxns = [...transactions]
@@ -135,7 +185,7 @@ export default function Dashboard() {
       <AppLayout>
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
           <motion.div variants={item}>
-            <h1 className="page-header">Welcome back, {userName}!</h1>
+            <h1 className="page-header">Welcome back, {storeManagerName}!</h1>
             <p className="text-muted-foreground text-sm mt-1">
               {currentStore ? `Managing ${currentStore.storeName}` : "Store Manager Dashboard"}
             </p>
@@ -157,11 +207,51 @@ export default function Dashboard() {
             ))}
           </motion.div>
 
-          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             <Card className="lg:col-span-2">
               <CardHeader className="pb-2">
+                <CardTitle className="text-base">Expense by Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pieData.length === 0 ? (
+                  <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm text-center">
+                    No data yet
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="46%"
+                        innerRadius={70}
+                        outerRadius={110}
+                        paddingAngle={4}
+                        dataKey="value"
+                        onClick={(payload: any) => payload?.sourceType && setSelectedStoreExpenseType(payload.sourceType)}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell
+                            key={index}
+                            fill={entry.fill}
+                            stroke={selectedStoreExpenseType === entry.sourceType ? "hsl(var(--foreground))" : entry.fill}
+                            strokeWidth={selectedStoreExpenseType === entry.sourceType ? 2 : 0}
+                            style={{ cursor: "pointer" }}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-foreground" /> Expense Breakdown
+                  <TrendingUp className="h-4 w-4 text-foreground" /> {selectedStoreSeries.label} Expense By Month
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -170,49 +260,18 @@ export default function Dashboard() {
                     No expense data yet. Settle expenses to see them here.
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <AreaChart
-                      data={[
-                        { name: "Rent", value: rentSpend },
-                        { name: "Utility", value: utilitySpend },
-                        { name: "Petty Cash", value: pettySpend },
-                      ]}
-                    >
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={storeMonthlyExpenseData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                       <YAxis
                         tick={{ fontSize: 12 }}
                         stroke="hsl(var(--muted-foreground))"
                         tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
                       />
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Area type="monotone" dataKey="value" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1)/.15)" name="Amount" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Expense by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {pieData.length === 0 ? (
-                  <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm text-center">
-                    No data yet
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie data={pieData} cx="50%" cy="45%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                        {pieData.map((entry, index) => (
-                          <Cell key={index} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                      <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
+                      <Bar dataKey={selectedStoreSeries.dataKey} fill={selectedStoreSeries.color} radius={[8, 8, 0, 0]} name={selectedStoreSeries.label} />
+                    </BarChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
@@ -230,7 +289,7 @@ export default function Dashboard() {
                 {recentTxns.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">No transactions yet.</p>
                 ) : (
-                  recentTxns.map((transaction: any, index: number) => {
+                  (showAllRecentExpenses ? recentTxns : recentTxns.slice(0, 4)).map((transaction: any, index: number) => {
                     const Icon = TYPE_ICONS[transaction.sourceType] || Receipt;
                     return (
                       <div key={transaction.id || index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
@@ -249,6 +308,19 @@ export default function Dashboard() {
                       </div>
                     );
                   })
+                )}
+                {recentTxns.length > 4 && (
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full justify-center text-sm font-medium"
+                      onClick={() => setShowAllRecentExpenses((prev) => !prev)}
+                    >
+                      {showAllRecentExpenses ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                      {showAllRecentExpenses ? "Show Less" : `Show ${recentTxns.length - 4} More`}
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>

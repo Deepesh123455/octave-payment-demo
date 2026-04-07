@@ -14,3 +14,8 @@ export const markNotificationsRead = async (payload: { ids?: string[]; type?: st
   const response = await api.post("notifications/mark-read", payload);
   return response.data;
 };
+
+export const createRefillRequest = async (payload: { storeId: string; requestedBy: string; storeName?: string }) => {
+  const response = await api.post("notifications/refill-request", payload);
+  return response.data;
+};

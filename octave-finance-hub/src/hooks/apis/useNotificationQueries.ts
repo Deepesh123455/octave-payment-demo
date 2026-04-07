@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchUnreadNotifications, fetchNotificationCounts, markNotificationsRead } from "@/api/api.notification";
+import { createRefillRequest, fetchUnreadNotifications, fetchNotificationCounts, markNotificationsRead } from "@/api/api.notification";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useNotifications = () => {
@@ -40,6 +40,19 @@ export const useMarkRead = () => {
         role: user?.role,
         storeId: user?.role === "STORE_MANAGER" ? user?.storeId || "STO001" : undefined,
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-counts"] });
+    },
+  });
+};
+
+export const useCreateRefillRequest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { storeId: string; requestedBy: string; storeName?: string }) =>
+      createRefillRequest(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["notification-counts"] });

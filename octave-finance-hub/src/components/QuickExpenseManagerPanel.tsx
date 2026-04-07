@@ -11,6 +11,8 @@ import { toast } from "sonner";
 
 const QUICK_EXPENSE_STORE_ID = "store-001";
 const quickExpenseUrl = "https://octave-payment-demo.vercel.app/mobile-expense?storeId=store-001";
+const apiBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1/";
+const backendOrigin = apiBaseUrl.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
 
 type PendingExpense = {
   id: string;
@@ -25,6 +27,8 @@ type PendingExpense = {
 type QuickExpenseManagerPanelProps = {
   currentStore: any;
   managerDisplayName: string;
+  onRefillRequest: () => Promise<void>;
+  isSendingRefillRequest: boolean;
   processPayment: (payload: {
     storeId: string;
     amount: number;
@@ -54,6 +58,8 @@ const getExpenseIcon = (category: string) => {
 export function QuickExpenseManagerPanel({
   currentStore,
   managerDisplayName,
+  onRefillRequest,
+  isSendingRefillRequest,
   processPayment,
 }: QuickExpenseManagerPanelProps) {
   const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
@@ -61,7 +67,7 @@ export function QuickExpenseManagerPanel({
   const [selectedExpense, setSelectedExpense] = useState<PendingExpense | null>(null);
 
   useEffect(() => {
-    const eventSource = new EventSource("https://octave-payment-demo.vercel.app/api/notifications/stream");
+    const eventSource = new EventSource(`${backendOrigin}/api/notifications/stream`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -154,53 +160,37 @@ export function QuickExpenseManagerPanel({
           </Card>
 
           <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-end px-1">
-              <h2 className="text-xl font-bold tracking-tight">Virtual Petty Cash</h2>
-              <Badge variant="outline" className="rounded-md border-primary/20 text-primary bg-primary/5 uppercase font-bold text-[10px]">
-                Active
-              </Badge>
+            <div className="flex flex-col gap-4 px-1">
+              <div className="flex justify-between items-end">
+                <h2 className="text-xl font-bold tracking-tight">Virtual Petty Cash</h2>
+                <Badge variant="outline" className="rounded-md border-primary/20 text-primary bg-primary/5 uppercase font-bold text-[10px]">
+                  Active
+                </Badge>
+              </div>
             </div>
             {currentStore ? (
-              <VirtualCard
-                balance={currentStore.pettyCashBalance}
-                cardNumber={currentStore.virtualCardNumber}
-                storeName={currentStore.storeName}
-                managerName={managerDisplayName}
-              />
+              <div className="space-y-4">
+                <VirtualCard
+                  balance={currentStore.pettyCashBalance}
+                  cardNumber={currentStore.virtualCardNumber}
+                  storeName={currentStore.storeName}
+                  managerName={managerDisplayName}
+                />
+                <Button
+                  onClick={onRefillRequest}
+                  disabled={isSendingRefillRequest}
+                  className="w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800 h-11 font-bold text-xs uppercase tracking-widest shadow-lg shadow-black/10 transition-all"
+                >
+                  {isSendingRefillRequest ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Refill Request
+                </Button>
+              </div>
             ) : (
               <div className="aspect-[1.586/1] w-full bg-secondary/10 border border-border/50 rounded-2xl flex items-center justify-center animate-pulse">
                 <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
               </div>
             )}
           </div>
-
-          <Card className="rounded-3xl bg-secondary/20 border-none shadow-none overflow-hidden group">
-            <CardContent className="p-6 flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                  <AlertTriangle className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base tracking-tight">Smart Thresholds</h3>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Global Policy</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-start gap-4 p-3 bg-background/50 rounded-2xl border border-border/50">
-                  <div className="h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-green-500" />
-                  </div>
-                  <p className="text-xs font-medium leading-relaxed">Expenses under Rs 1,500 are auto-approved for immediate settlement.</p>
-                </div>
-                <div className="flex items-start gap-4 p-3 bg-background/50 rounded-2xl border border-border/50">
-                  <div className="h-5 w-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  </div>
-                  <p className="text-xs font-medium leading-relaxed">Amounts above Rs 1,500 require central admin review.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="lg:col-span-7 flex flex-col gap-6">

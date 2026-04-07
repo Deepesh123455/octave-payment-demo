@@ -54,4 +54,33 @@ export class NotificationController {
       next(error);
     }
   }
+
+  async createRefillRequest(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { storeId, requestedBy, storeName } = req.body;
+
+      if (!storeId || !requestedBy) {
+        return res.status(400).json({
+          status: "fail",
+          message: "storeId and requestedBy are required",
+        });
+      }
+
+      const notification = await this.notificationService.create({
+        storeId,
+        adminEmail: "admins",
+        title: "Petty Cash Refill Request",
+        message: `${requestedBy} requested a petty cash refill for ${storeName || storeId}.`,
+        type: "PETTY_CASH",
+      });
+
+      res.status(201).json({
+        status: "success",
+        message: "Refill request sent successfully",
+        data: notification,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
