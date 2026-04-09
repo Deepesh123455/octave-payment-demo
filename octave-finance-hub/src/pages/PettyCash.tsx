@@ -20,6 +20,8 @@ import { formatCurrency } from "@/data/sampleData";
 import { useCreateRefillRequest, useMarkRead } from "@/hooks/apis/useNotificationQueries";
 import { useCreatePettyCash, useApprovePettyCash, usePettyCashRequests, useProcessDirectPayment, useRejectPettyCash } from "@/hooks/apis/usePettyCashQueries";
 import { useStores } from "@/hooks/apis/useStoreQueries";
+import { useLocation, useNavigate } from "react-router-dom";
+import { openQuickExpenseFromNotification, type QuickExpenseNotification } from "@/lib/quickExpenseNotifications";
 import { toast } from "sonner";
 
 const categories = ["Store Supplies", "Repairs", "Marketing", "Maintenance", "Courier", "Staff Welfare", "Utility", "Others"];
@@ -28,6 +30,8 @@ const getDisplayStatus = (status?: string) => (status === "Paid" ? "Approved" : 
 
 export default function PettyCash() {
   const { user, isAdmin, isStoreManager } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("All");
   const [managerTab, setManagerTab] = useState("petty_management");
@@ -40,6 +44,7 @@ export default function PettyCash() {
     category: "",
     description: "",
   });
+  const [pendingQuickExpenseToOpen, setPendingQuickExpenseToOpen] = useState<QuickExpenseNotification | null>(null);
 
   const { mutate: markRead } = useMarkRead();
   const { mutateAsync: sendRefillRequest, isPending: isSendingRefillRequest } = useCreateRefillRequest();
@@ -51,6 +56,28 @@ export default function PettyCash() {
   useEffect(() => {
     markRead({ type: "PETTY_CASH" });
   }, []);
+
+  useEffect(() => {
+    const quickExpenseToOpen = (location.state as { quickExpenseToOpen?: QuickExpenseNotification } | null)
+      ?.quickExpenseToOpen;
+
+    if (!quickExpenseToOpen) {
+      return;
+    }
+
+    setManagerTab("petty_management");
+    setPendingQuickExpenseToOpen(quickExpenseToOpen);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!pendingQuickExpenseToOpen || managerTab !== "petty_management") {
+      return;
+    }
+
+    openQuickExpenseFromNotification(pendingQuickExpenseToOpen);
+    setPendingQuickExpenseToOpen(null);
+  }, [managerTab, pendingQuickExpenseToOpen]);
 
   const effectiveStoreId = useMemo(() => {
     if (!isStoreManager) {
@@ -242,18 +269,18 @@ export default function PettyCash() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setManagerTab("view_expenses")}
-                  className={`rounded-xl px-4 py-1.5 transition-all font-bold text-xs uppercase tracking-wider ${managerTab === "view_expenses" ? "bg-background shadow-premium text-primary" : "text-muted-foreground"}`}
-                >
-                  Store Expenses
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setManagerTab("petty_management")}
                   className={`rounded-xl px-4 py-1.5 transition-all font-bold text-xs uppercase tracking-wider ${managerTab === "petty_management" ? "bg-background shadow-premium text-primary" : "text-muted-foreground"}`}
                 >
                   Card & Quick Pay
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setManagerTab("view_expenses")}
+                  className={`rounded-xl px-4 py-1.5 transition-all font-bold text-xs uppercase tracking-wider ${managerTab === "view_expenses" ? "bg-background shadow-premium text-primary" : "text-muted-foreground"}`}
+                >
+                  Store Expenses
                 </Button>
               </div>
             )}

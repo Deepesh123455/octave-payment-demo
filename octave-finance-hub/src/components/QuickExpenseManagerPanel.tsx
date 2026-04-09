@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { VirtualCard } from "@/components/VirtualCard";
 import { PaymentModal } from "@/components/PaymentModal";
+import {
+  getQuickExpenseNotifications,
+  removeQuickExpenseNotification,
+  subscribeToQuickExpenseOpen,
+  upsertQuickExpenseNotification,
+  type QuickExpenseNotification,
+} from "@/lib/quickExpenseNotifications";
 import { toast } from "sonner";
 
 const QUICK_EXPENSE_STORE_ID = "store-001";
@@ -14,15 +21,7 @@ const quickExpenseUrl = "https://octave-payment-demo.vercel.app/mobile-expense?s
 const apiBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1/";
 const backendOrigin = apiBaseUrl.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
 
-type PendingExpense = {
-  id: string;
-  storeId: string;
-  category: string;
-  amount: number;
-  description: string;
-  status: string;
-  createdAt: string;
-};
+type PendingExpense = QuickExpenseNotification;
 
 type QuickExpenseManagerPanelProps = {
   currentStore: any;
@@ -62,7 +61,9 @@ export function QuickExpenseManagerPanel({
   isSendingRefillRequest,
   processPayment,
 }: QuickExpenseManagerPanelProps) {
-  const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>([]);
+  const [pendingExpenses, setPendingExpenses] = useState<PendingExpense[]>(() =>
+    getQuickExpenseNotifications(),
+  );
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<PendingExpense | null>(null);
 
@@ -75,6 +76,7 @@ export function QuickExpenseManagerPanel({
         setPendingExpenses((current) =>
           current.some((item) => item.id === expense.id) ? current : [expense, ...current],
         );
+        upsertQuickExpenseNotification(expense);
       } catch (error) {
         console.error("Failed to parse quick expense notification", error);
       }
@@ -88,6 +90,17 @@ export function QuickExpenseManagerPanel({
       eventSource.close();
     };
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToQuickExpenseOpen((expense) => {
+      setPendingExpenses((current) =>
+        current.some((item) => item.id === expense.id) ? current : [expense, ...current],
+      );
+      openPaymentModal(expense);
+    });
+
+    return unsubscribe;
+  }, [currentStore]);
 
   const openPaymentModal = (expense: PendingExpense) => {
     if (!currentStore) {
@@ -119,6 +132,7 @@ export function QuickExpenseManagerPanel({
     });
 
     setPendingExpenses((current) => current.filter((item) => item.id !== selectedExpense.id));
+    removeQuickExpenseNotification(selectedExpense.id);
     toast.success(`Rs ${selectedExpense.amount.toLocaleString("en-IN")} deducted from Petty Cash`);
   };
 
@@ -152,9 +166,6 @@ export function QuickExpenseManagerPanel({
                 <div className="rounded-[28px] bg-white p-4 shadow-lg shadow-black/5">
                   <QRCodeSVG value={quickExpenseUrl} size={220} includeMargin />
                 </div>
-                <p className="text-[11px] text-center text-muted-foreground font-medium break-all">
-                  {quickExpenseUrl}
-                </p>
               </div>
             </CardContent>
           </Card>

@@ -32,6 +32,7 @@ import {
   Legend,
 } from "recharts";
 import { AppLayout } from "@/components/AppLayout";
+import { AnimatedCurrencyCount } from "@/components/AnimatedCurrencyCount";
 import { formatCurrency } from "@/data/sampleData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransactions } from "@/hooks/apis/useTransactionQueries";
@@ -81,10 +82,39 @@ const STORE_DASHBOARD_SERIES = {
   PETTY_CASH: { label: "Petty Cash", dataKey: "petty", color: "hsl(var(--chart-5))" },
 } as const;
 
+const ensureSeriesHasVisibleBar = <
+  T extends { rent: number; utilities: number; petty: number }
+>(
+  rows: T[],
+  selectedType: keyof typeof STORE_DASHBOARD_SERIES,
+  fallbackTotal: number,
+): T[] => {
+  if (rows.length === 0 || fallbackTotal <= 0) {
+    return rows;
+  }
+
+  const dataKey = STORE_DASHBOARD_SERIES[selectedType].dataKey;
+  const hasVisibleValue = rows.some((row) => Number(row[dataKey]) > 0);
+
+  if (hasVisibleValue) {
+    return rows;
+  }
+
+  return rows.map((row, index) =>
+    index === rows.length - 1
+      ? {
+          ...row,
+          [dataKey]: fallbackTotal,
+        }
+      : row,
+  );
+};
+
 export default function Dashboard() {
   const { user, isStoreManager } = useAuth();
-  const userName = user?.role || user?.email?.split("@")[0] || "User";
+  const userName = "Super Admin";
   const [selectedStoreExpenseType, setSelectedStoreExpenseType] = useState<keyof typeof STORE_DASHBOARD_SERIES>("RENT");
+  const [selectedAdminExpenseType, setSelectedAdminExpenseType] = useState<keyof typeof STORE_DASHBOARD_SERIES>("RENT");
   const [showAllRecentExpenses, setShowAllRecentExpenses] = useState(false);
 
   const storeId = isStoreManager ? user?.storeId || "STO001" : undefined;
@@ -163,6 +193,17 @@ export default function Dashboard() {
     const rentSpend = rentTxns.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
     const utilitySpend = utilityTxns.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
     const pettySpend = pettyTxns.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+    const storeSelectedSeriesTotal =
+      selectedStoreExpenseType === "RENT"
+        ? rentSpend
+        : selectedStoreExpenseType === "UTILITY"
+        ? utilitySpend
+        : pettySpend;
+    const storeChartData = ensureSeriesHasVisibleBar(
+      storeMonthlyExpenseData,
+      selectedStoreExpenseType,
+      storeSelectedSeriesTotal,
+    );
 
     const statCards = [
       { title: "Total Expenses", value: totalSpend, icon: IndianRupee },
@@ -197,7 +238,9 @@ export default function Dashboard() {
                 <CardContent className="p-0 flex items-start justify-between">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.title}</p>
-                    <p className="text-2xl font-bold mt-1">{formatCurrency(stat.value)}</p>
+                    <p className="text-2xl font-bold mt-1">
+                      <AnimatedCurrencyCount value={stat.value} />
+                    </p>
                   </div>
                   <div className="p-2 rounded-lg bg-secondary text-foreground">
                     <stat.icon className="h-5 w-5" />
@@ -261,7 +304,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={storeMonthlyExpenseData}>
+                    <BarChart data={storeChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                       <YAxis
@@ -348,6 +391,18 @@ export default function Dashboard() {
     .filter((request: any) => isPendingPettyReview(request.status))
     .reduce((sum: number, request: any) => sum + Number(request.amount || 0), 0);
   const totalPending = pendingRent + pendingUtilities + pendingPettyCash;
+  const selectedAdminSeries = STORE_DASHBOARD_SERIES[selectedAdminExpenseType];
+  const adminSelectedSeriesTotal =
+    selectedAdminExpenseType === "RENT"
+      ? pendingRent
+      : selectedAdminExpenseType === "UTILITY"
+      ? pendingUtilities
+      : pendingPettyCash;
+  const adminOverviewPieData = [
+    { name: "Rent", value: pendingRent, fill: STORE_DASHBOARD_SERIES.RENT.color, sourceType: "RENT" as const },
+    { name: "Utilities", value: pendingUtilities, fill: STORE_DASHBOARD_SERIES.UTILITY.color, sourceType: "UTILITY" as const },
+    { name: "Petty Cash", value: pendingPettyCash, fill: STORE_DASHBOARD_SERIES.PETTY_CASH.color, sourceType: "PETTY_CASH" as const },
+  ].filter((entry) => entry.value > 0);
 
   const pendingItems = [
     ...rentPayments
@@ -428,6 +483,11 @@ export default function Dashboard() {
 
     return months;
   }, [allTransactions]);
+  const adminChartData = ensureSeriesHasVisibleBar(
+    expenseTrendData,
+    selectedAdminExpenseType,
+    adminSelectedSeriesTotal,
+  );
 
   const categoryPieData = useMemo(() => {
     const totals = new Map<string, number>();
@@ -446,6 +506,66 @@ export default function Dashboard() {
         fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
       }));
   }, [allTransactions]);
+
+  const adminCategoryBreakdown = useMemo(() => {
+    if (selectedAdminExpenseType === "RENT") {
+      const totals = new Map<string, number>();
+
+      rentPayments
+        .filter((rent: any) => isAdminPendingRent(rent.status))
+        .forEach((rent: any) => {
+          const key = rent.store?.storeName || rent.paymentMonth || "Rent";
+          totals.set(key, (totals.get(key) || 0) + Number(rent.netPayable || rent.amount || 0));
+        });
+
+      return Array.from(totals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value], index) => ({
+          name,
+          value,
+          fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+        }));
+    }
+
+    if (selectedAdminExpenseType === "UTILITY") {
+      const totals = new Map<string, number>();
+
+      utilityBills
+        .filter((utility: any) => isAdminPendingUtility(utility.status))
+        .forEach((utility: any) => {
+          const key = utility.utilityType || "Utility";
+          totals.set(key, (totals.get(key) || 0) + Number(utility.billAmount || 0));
+        });
+
+      return Array.from(totals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name, value], index) => ({
+          name,
+          value,
+          fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+        }));
+    }
+
+    const totals = new Map<string, number>();
+
+    pettyCashRequests
+      .filter((request: any) => isPendingPettyReview(request.status))
+      .forEach((request: any) => {
+        const key = request.category || "Petty Cash";
+        totals.set(key, (totals.get(key) || 0) + Number(request.amount || 0));
+      });
+
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+      }));
+  }, [pettyCashRequests, rentPayments, selectedAdminExpenseType, utilityBills]);
 
   if (adminLoading) {
     return (
@@ -468,10 +588,10 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { title: "Total Pending Today", value: totalPending, icon: IndianRupee, color: "text-foreground" },
-    { title: "Pending Rent", value: pendingRent, icon: Home, color: "text-foreground" },
-    { title: "Pending Utilities", value: pendingUtilities, icon: Zap, color: "text-muted-foreground" },
-    { title: "Pending Petty Cash", value: pendingPettyCash, icon: Wallet, color: "text-muted-foreground" },
+    { title: "Total Pending Today", value: totalPending, icon: IndianRupee, color: "text-foreground", sourceType: null },
+    { title: "Pending Rent", value: pendingRent, icon: Home, color: "text-foreground", sourceType: "RENT" as const },
+    { title: "Pending Utilities", value: pendingUtilities, icon: Zap, color: "text-muted-foreground", sourceType: "UTILITY" as const },
+    { title: "Pending Petty Cash", value: pendingPettyCash, icon: Wallet, color: "text-muted-foreground", sourceType: "PETTY_CASH" as const },
   ];
 
   return (
@@ -486,35 +606,91 @@ export default function Dashboard() {
 
         <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((stat) => (
-            <Card key={stat.title} className="stat-card">
-              <CardContent className="p-0 flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.title}</p>
-                  <p className="text-2xl font-bold mt-1">{formatCurrency(stat.value)}</p>
-                </div>
-                <div className={`p-2 rounded-lg bg-secondary ${stat.color}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-              </CardContent>
-            </Card>
+            <button
+              key={stat.title}
+              type="button"
+              className="text-left"
+              onClick={() => stat.sourceType && setSelectedAdminExpenseType(stat.sourceType)}
+              disabled={!stat.sourceType}
+            >
+              <Card
+                className={`stat-card transition-all ${
+                  stat.sourceType ? "cursor-pointer hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5" : ""
+                } ${
+                  stat.sourceType && selectedAdminExpenseType === stat.sourceType ? "border-primary shadow-lg shadow-primary/10" : ""
+                }`}
+              >
+                <CardContent className="p-0 flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.title}</p>
+                    <p className="text-2xl font-bold mt-1">
+                      <AnimatedCurrencyCount value={stat.value} />
+                    </p>
+                  </div>
+                  <div className={`p-2 rounded-lg bg-secondary ${stat.color}`}>
+                    <stat.icon className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
           ))}
         </motion.div>
 
-        <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
+              <CardTitle className="text-base">Expense by Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {adminOverviewPieData.length === 0 ? (
+                <div className="h-[320px] flex items-center justify-center text-muted-foreground text-sm text-center">
+                  No data yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie
+                      data={adminOverviewPieData}
+                      cx="50%"
+                      cy="46%"
+                      innerRadius={70}
+                      outerRadius={110}
+                      paddingAngle={4}
+                      dataKey="value"
+                      onClick={(payload: any) => payload?.sourceType && setSelectedAdminExpenseType(payload.sourceType)}
+                    >
+                      {adminOverviewPieData.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={entry.fill}
+                          stroke={selectedAdminExpenseType === entry.sourceType ? "hsl(var(--foreground))" : entry.fill}
+                          strokeWidth={selectedAdminExpenseType === entry.sourceType ? 2 : 0}
+                          style={{ cursor: "pointer" }}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-foreground" /> Expense Trend (6 months)
+                <TrendingUp className="h-4 w-4 text-foreground" /> {selectedAdminSeries.label} Expense By Month
               </CardTitle>
             </CardHeader>
             <CardContent>
               {expenseTrendData.every((entry) => entry.rent === 0 && entry.utilities === 0 && entry.petty === 0) ? (
                 <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
-                  No settled transactions yet.
+                  No expense data yet.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={expenseTrendData}>
+                  <BarChart data={adminChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis
@@ -523,35 +699,8 @@ export default function Dashboard() {
                       tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
                     />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Area type="monotone" dataKey="rent" stackId="1" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1)/.15)" name="Rent" />
-                    <Area type="monotone" dataKey="utilities" stackId="1" stroke="hsl(var(--chart-3))" fill="hsl(var(--chart-3)/.15)" name="Utilities" />
-                    <Area type="monotone" dataKey="petty" stackId="1" stroke="hsl(var(--chart-5))" fill="hsl(var(--chart-5)/.15)" name="Petty Cash" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Expense by Category</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {categoryPieData.length === 0 ? (
-                <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
-                  No paid category mix available yet.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie data={categoryPieData} cx="50%" cy="45%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
-                      {categoryPieData.map((entry, index) => (
-                        <Cell key={index} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                  </PieChart>
+                    <Bar dataKey={selectedAdminSeries.dataKey} fill={selectedAdminSeries.color} radius={[8, 8, 0, 0]} name={selectedAdminSeries.label} />
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
@@ -642,3 +791,4 @@ export default function Dashboard() {
     </AppLayout>
   );
 }
+

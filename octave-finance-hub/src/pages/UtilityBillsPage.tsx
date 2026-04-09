@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Wifi, Droplets, Building, Cog, Loader2, AlertCircle, CheckCircle, Filter, FileCheck, XCircle } from "lucide-react";
+import { Zap, Wifi, Droplets, Building, Cog, Loader2, AlertCircle, CheckCircle, Filter, FileCheck, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency } from "@/data/sampleData";
@@ -34,6 +34,8 @@ export default function UtilityBills() {
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("All");
   const [page, setPage] = useState(1);
+  const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
+  const [showAllStoreSections, setShowAllStoreSections] = useState(false);
   const { mutate: markRead } = useMarkRead();
   const {user} = useAuth();
  const isPrivileged =
@@ -62,6 +64,15 @@ export default function UtilityBills() {
     });
     return Object.entries(stores).map(([id, data]) => ({ storeId: id, ...data }));
   }, [filteredBills]);
+  const visibleStoreGroups = useMemo(
+    () => (showAllStoreSections ? groupedByStore : groupedByStore.slice(0, 4)),
+    [groupedByStore, showAllStoreSections],
+  );
+
+  useEffect(() => {
+    setExpandedStores({});
+    setShowAllStoreSections(false);
+  }, [activeTab, page, filteredBills.length]);
 
   const toggleSelect = (id: string) => {
     if (!isPrivileged) return;
@@ -166,7 +177,7 @@ export default function UtilityBills() {
               </div>
             ) : groupedByStore.length > 0 ? (
               <div key="content" className="space-y-6">
-                {groupedByStore.map(({ storeId, storeName, bills }) => {
+                {visibleStoreGroups.map(({ storeId, storeName, bills }) => {
                   const pendingTotal = bills.filter((b) => b.status !== "Paid").reduce((s, b) => s + b.billAmount, 0);
                   return (
                     <Card key={storeId} className="overflow-hidden border-none shadow-sm bg-card/50">
@@ -195,7 +206,7 @@ export default function UtilityBills() {
                       </CardHeader>
                       <CardContent className="pt-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                          {bills.map((bill: any) => {
+                          {(expandedStores[storeId] ? bills : bills.slice(0, 4)).map((bill: any) => {
                             const Icon = typeIcons[bill.utilityType] || Zap;
                             const canApprove = !["Approved", "Paid"].includes(bill.status);
                             
@@ -262,10 +273,41 @@ export default function UtilityBills() {
                             );
                           })}
                         </div>
+                        {bills.length > 4 && (
+                          <div className="pt-4 border-t border-border/50 mt-4">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full justify-center text-sm font-medium"
+                              onClick={() =>
+                                setExpandedStores((prev) => ({
+                                  ...prev,
+                                  [storeId]: !prev[storeId],
+                                }))
+                              }
+                            >
+                              {expandedStores[storeId] ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                              {expandedStores[storeId] ? "Show Less" : `Show ${bills.length - 4} More`}
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
                 })}
+                {groupedByStore.length > 4 && (
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full justify-center text-sm font-medium"
+                      onClick={() => setShowAllStoreSections((prev) => !prev)}
+                    >
+                      {showAllStoreSections ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                      {showAllStoreSections ? "Show Less" : `Show ${groupedByStore.length - 4} More`}
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div key="empty" className="flex flex-col items-center justify-center py-20 text-muted-foreground text-center">

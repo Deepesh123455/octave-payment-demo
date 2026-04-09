@@ -29,6 +29,8 @@ import {
   Zap,
   IndianRupee,
   Receipt,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { DynamicPagination } from "@/components/ui/DynamicPagination";
@@ -65,6 +67,7 @@ export default function ApprovalCenter() {
   const [search, setSearch] = useState("");
   const [storeId, setStoreId] = useState<string>("all");
   const [sourceType, setSourceType] = useState<string>("all");
+  const [showAllVisibleRows, setShowAllVisibleRows] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<{ id: string; sourceType: SourceType; description: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
@@ -104,6 +107,14 @@ export default function ApprovalCenter() {
       return matchSearch;
     });
   }, [items, search]);
+  const visibleItems = useMemo(
+    () => (showAllVisibleRows ? filtered : filtered.slice(0, 4)),
+    [filtered, showAllVisibleRows],
+  );
+
+  useEffect(() => {
+    setShowAllVisibleRows(false);
+  }, [filtered.length, page, search, sourceType, storeId]);
 
   const totals = useMemo(() => ({
     count: response?.meta?.totalRecords || 0,
@@ -400,7 +411,7 @@ export default function ApprovalCenter() {
                     </TableHeader>
                     <TableBody>
                       <AnimatePresence>
-                        {filtered.map((item: any) => (
+                        {visibleItems.map((item: any) => (
                           <motion.tr
                             key={`${item.sourceType}-${item.id}`}
                             initial={{ opacity: 0 }}
@@ -493,6 +504,19 @@ export default function ApprovalCenter() {
                 </div>
               )}
             </AnimatePresence>
+            {!isLoading && !isError && filtered.length > 4 && (
+              <div className="p-4 border-t border-border/50">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-center text-sm font-medium"
+                  onClick={() => setShowAllVisibleRows((prev) => !prev)}
+                >
+                  {showAllVisibleRows ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                  {showAllVisibleRows ? "Show Less" : `Show ${filtered.length - 4} More`}
+                </Button>
+              </div>
+            )}
             {!isLoading && !isError && response?.meta && response.meta.totalPages > 1 && (
               <div className="p-4 border-t">
                 <DynamicPagination 

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, Loader2, AlertCircle, Filter, FileCheck, XCircle } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle, Filter, FileCheck, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { DynamicPagination } from "@/components/ui/DynamicPagination";
 import { formatCurrency } from "@/data/sampleData";
@@ -19,6 +19,7 @@ export default function RentPayments() {
   const [selected, setSelected] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("All");
   const [page, setPage] = useState(1);
+  const [showAllVisibleRows, setShowAllVisibleRows] = useState(false);
   const { user } = useAuth();
   const { mutate: markRead } = useMarkRead();
   
@@ -52,6 +53,14 @@ export default function RentPayments() {
   }, [rentRecords]);
 
   const filteredRecords = processRecords;
+  const visibleRecords = useMemo(
+    () => (showAllVisibleRows ? filteredRecords : filteredRecords.slice(0, 4)),
+    [filteredRecords, showAllVisibleRows],
+  );
+
+  useEffect(() => {
+    setShowAllVisibleRows(false);
+  }, [activeTab, page, filteredRecords.length]);
 
   const toggleSelect = (id: string) => {
     if (!isPrivileged) return;
@@ -236,7 +245,7 @@ export default function RentPayments() {
                     <TableBody>
                       <AnimatePresence mode="popLayout">
                         {filteredRecords.length > 0 ? (
-                          filteredRecords.map((r: any) => (
+                          visibleRecords.map((r: any) => (
                             <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-b transition-colors hover:bg-muted/50">
                               <TableCell className="text-center">
                                 {isPrivileged && !["Approved", "Paid"].includes(r.status) && (
@@ -312,6 +321,19 @@ export default function RentPayments() {
                       </AnimatePresence>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              {!isLoading && !isError && filteredRecords.length > 4 && (
+                <div className="p-4 border-t border-border/50">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-center text-sm font-medium"
+                    onClick={() => setShowAllVisibleRows((prev) => !prev)}
+                  >
+                    {showAllVisibleRows ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                    {showAllVisibleRows ? "Show Less" : `Show ${filteredRecords.length - 4} More`}
+                  </Button>
                 </div>
               )}
               {!isLoading && !isError && rentResponse?.meta && rentResponse.meta.totalPages > 1 && (

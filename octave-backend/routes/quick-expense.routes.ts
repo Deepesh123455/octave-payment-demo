@@ -6,8 +6,8 @@ const router = Router();
 
 const STORE_ID = "store-001";
 const QUICK_EXPENSE_CHANNEL = `notify:expenses:${STORE_ID}`;
-const redisPub = createRedisClient("octave-quick-expense-pub");
-const redisSub = createRedisClient("octave-quick-expense-sub");
+const redisPub = createRedisClient("octave-quick-expense-pub", { lazyConnect: true });
+const redisSub = createRedisClient("octave-quick-expense-sub", { lazyConnect: true });
 const sseClients = new Set<Response>();
 
 const categories = [
@@ -109,7 +109,15 @@ router.post("/api/expenses/quick-log", async (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  await redisPub.publish(QUICK_EXPENSE_CHANNEL, JSON.stringify(expensePayload));
+  try {
+    await redisPub.publish(QUICK_EXPENSE_CHANNEL, JSON.stringify(expensePayload));
+  } catch (error) {
+    console.error("[QuickExpense] Failed to publish expense notification", error);
+    return res.status(503).json({
+      status: "fail",
+      message: "Expense service is temporarily unavailable. Please try again.",
+    });
+  }
 
   return res.status(200).json({
     status: "success",

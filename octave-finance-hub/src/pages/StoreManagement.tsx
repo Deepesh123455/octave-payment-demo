@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,8 @@ import {
   Wallet,
   Plus,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { formatCurrency } from "@/data/sampleData";
@@ -49,6 +51,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function StoreManagement() {
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
+  const [showAllVisibleRows, setShowAllVisibleRows] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const canUpdatePettyCash =
@@ -90,6 +93,10 @@ export default function StoreManagement() {
     const matchCity = cityFilter === "all" || s.city === cityFilter;
     return matchSearch && matchCity;
   });
+  const visibleStores = useMemo(
+    () => (showAllVisibleRows ? filtered : filtered.slice(0, 4)),
+    [filtered, showAllVisibleRows],
+  );
 
   return (
     <AppLayout>
@@ -164,7 +171,7 @@ export default function StoreManagement() {
                 </TableHeader>
                 <TableBody>
                   {filtered.length > 0 ? (
-                    filtered.map((store) => (
+                    visibleStores.map((store) => (
                       <TableRow
                         key={store.id}
                         className="cursor-pointer hover:bg-secondary/50"
@@ -296,6 +303,19 @@ export default function StoreManagement() {
                   )}
                 </TableBody>
               </Table>
+            )}
+            {!isLoading && !isError && filtered.length > 4 && (
+              <div className="pt-4 border-t border-border/50">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-center text-sm font-medium"
+                  onClick={() => setShowAllVisibleRows((prev) => !prev)}
+                >
+                  {showAllVisibleRows ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                  {showAllVisibleRows ? "Show Less" : `Show ${filtered.length - 4} More`}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut, AlertCircle, Clock, Check, Building2, Zap, Receipt, CheckCircle } from "lucide-react";
+import { Bell, Search, User, LogOut, AlertCircle, Clock, Check, Building2, Zap, Receipt, CheckCircle, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,17 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStores } from "@/hooks/apis/useStoreQueries";
 import { useNotifications, useMarkRead } from "@/hooks/apis/useNotificationQueries";
+import {
+  getQuickExpenseNotifications,
+  openQuickExpenseFromNotification,
+  removeQuickExpenseNotification,
+  subscribeToQuickExpenseNotifications,
+  type QuickExpenseNotification,
+} from "@/lib/quickExpenseNotifications";
 
 export function TopBar() {
   const { user, logout, isStoreManager } = useAuth();
@@ -21,10 +28,23 @@ export function TopBar() {
   const { mutate: markRead } = useMarkRead();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [quickExpenseNotifications, setQuickExpenseNotifications] = useState<QuickExpenseNotification[]>(() =>
+    getQuickExpenseNotifications(),
+  );
 
   const notifications = notificationResponse?.data || [];
+  const totalNotifications = notifications.length + quickExpenseNotifications.length;
+  const displayName =
+    user?.email === "democfo@gmail.com" && user?.role === "STORE_MANAGER"
+      ? "Rajesh Malhotra"
+      : user?.name || user?.email || "User";
 
   const stores = storeResponse?.data || [];
+
+  useEffect(() => {
+    return subscribeToQuickExpenseNotifications(setQuickExpenseNotifications);
+  }, []);
   
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -147,13 +167,13 @@ export function TopBar() {
         )}
       </div>
       <div className="flex items-center gap-4">
-        <Popover>
+        <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
           <PopoverTrigger asChild>
             <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors group">
               <Bell className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
-              {notifications.length > 0 && (
+              {totalNotifications > 0 && (
                 <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-foreground text-background border-0 animate-pulse">
-                  {notifications.length}
+                  {totalNotifications}
                 </Badge>
               )}
             </button>
@@ -163,53 +183,112 @@ export function TopBar() {
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-sm">Notifications</h4>
                 <Badge variant="outline" className="text-[10px] font-bold bg-background/50 border-border/50">
-                  {notifications.length} NEW
+                  {totalNotifications} NEW
                 </Badge>
               </div>
             </div>
             <ScrollArea className="h-[350px]">
               <div className="flex flex-col">
-                {notifications.length === 0 ? (
+                {totalNotifications === 0 ? (
                   <div className="py-20 text-center text-muted-foreground">
                     <CheckCircle className="h-8 w-8 mx-auto mb-3 opacity-20" />
                     <p className="text-xs">No unread notifications</p>
                   </div>
                 ) : (
-                  notifications.map((n: any, idx: number) => (
-                    <motion.div
-                      key={n.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="p-4 hover:bg-secondary/20 transition-colors border-b border-border/30 last:border-0 cursor-pointer group"
-                      onClick={() => {
-                        markRead({ ids: [n.id] });
-                        // Optional: navigate based on type
-                      }}
-                    >
-                      <div className="flex gap-3">
-                        <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${getNotificationBg(n.type)}`}>
-                          {getNotificationIcon(n.type)}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-foreground">{n.title}</p>
-                            <span className="text-[10px] text-muted-foreground">
-                              {new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                  <>
+                    {quickExpenseNotifications.map((expense, idx) => (
+                      <motion.div
+                        key={expense.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="p-4 hover:bg-secondary/20 transition-colors border-b border-border/30 last:border-0 group"
+                      >
+                        <div className="flex gap-3">
+                          <div className="mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-primary/10">
+                            <Receipt className="h-4 w-4 text-primary" />
                           </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                            {n.message}
-                          </p>
-                          <div className="flex items-center gap-2 pt-1">
-                            <span className="text-[10px] font-mono bg-secondary px-1.5 py-0.5 rounded text-foreground font-bold italic tracking-tighter">
-                              {n.store?.storeName || 'General'}
-                            </span>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-foreground">Quick Expense Submitted</p>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(expense.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {expense.category} for Rs {expense.amount.toLocaleString("en-IN")} - {expense.description}
+                            </p>
+                            <div className="flex items-center gap-2 pt-1">
+                              <span className="text-[10px] font-mono bg-secondary px-1.5 py-0.5 rounded text-foreground font-bold italic tracking-tighter">
+                                {user?.storeId || expense.storeId}
+                              </span>
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <Button
+                                size="sm"
+                                className="h-8 w-8 rounded-lg p-0"
+                                onClick={() => {
+                                  setIsNotificationsOpen(false);
+                                  navigate("/petty-cash", { state: { quickExpenseToOpen: expense } });
+                                }}
+                                title="Approve and open payment"
+                                aria-label="Approve and open payment"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 w-8 rounded-lg p-0"
+                                onClick={() => {
+                                  removeQuickExpenseNotification(expense.id);
+                                  setIsNotificationsOpen(false);
+                                }}
+                                title="Dismiss notification"
+                                aria-label="Dismiss notification"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))
+                      </motion.div>
+                    ))}
+                    {notifications.map((n: any, idx: number) => (
+                      <motion.div
+                        key={n.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: (quickExpenseNotifications.length + idx) * 0.05 }}
+                        className="p-4 hover:bg-secondary/20 transition-colors border-b border-border/30 last:border-0 cursor-pointer group"
+                        onClick={() => {
+                          markRead({ ids: [n.id] });
+                        }}
+                      >
+                        <div className="flex gap-3">
+                          <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${getNotificationBg(n.type)}`}>
+                            {getNotificationIcon(n.type)}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-foreground">{n.title}</p>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(n.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                              {n.message}
+                            </p>
+                            <div className="flex items-center gap-2 pt-1">
+                              <span className="text-[10px] font-mono bg-secondary px-1.5 py-0.5 rounded text-foreground font-bold italic tracking-tighter">
+                                {n.store?.storeName || "General"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </>
                 )}
               </div>
             </ScrollArea>
@@ -239,7 +318,7 @@ export function TopBar() {
             <User className="h-4 w-4 text-background" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium leading-none">{user?.email || "User"}</p>
+            <p className="text-sm font-medium leading-none">{displayName}</p>
             <p className="text-xs text-muted-foreground uppercase tracking-tighter mt-1">
               {user?.role?.replace("_", " ") || "No Role Assigned"}
             </p>
